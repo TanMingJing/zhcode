@@ -1,0 +1,29 @@
+{
+  "name": "@wencode/core",
+  "version": "0.1.0",
+  "description": "WenCode language core: Tokenizer, Parser, Transpiler",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "require": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "dev": "tsup src/index.ts --watch",
+    "build": "tsup src/index.ts",
+    "test": "vitest",
+    "test:coverage": "vitest --coverage",
+    "lint": "eslint src --ext .ts",
+    "type-check": "tsc --noEmit"
+  },
+  "files": ["dist"],
+  "keywords": ["language", "parser", "tokenizer", "transpiler", "chinese"],
+  "author": "WenCode Team",
+  "license": "MIT",
+  "devDependencies": {
+    "tsup": "^8.0.0",
+    "@vitest/coverage-v8": "^1.0.0"
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "name": "wencode",
+  "displayName": "WenCode",
+  "description": "Language support and development tools for WenCode",
+  "version": "0.1.0",
+  "publisher": "wencode",
+  "engine": {
+    "vscode": "^1.84.0"
+  },
+  "categories": ["Programming Languages", "Formatters"],
+  "activationEvents": [
+    "onLanguage:wencode"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "languages": [
+      {
+        "id": "wencode",
+        "aliases": ["WenCode", "wencode"],
+        "extensions": [".wen"],
+        "configuration": "./language-configuration.json"
+      }
+    ]
+  }
+}

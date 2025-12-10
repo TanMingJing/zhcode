@@ -1,0 +1,26 @@
+{
+  "name": "@wencode/cli",
+  "version": "0.1.0",
+  "description": "WenCode command-line interface",
+  "main": "dist/index.js",
+  "bin": {
+    "wencode": "dist/cli.js"
+  },
+  "scripts": {
+    "dev": "tsup src/cli.ts --watch",
+    "build": "tsup src/cli.ts",
+    "test": "vitest",
+    "lint": "eslint src --ext .ts",
+    "type-check": "tsc --noEmit"
+  },
+  "files": ["dist"],
+  "keywords": ["cli", "compiler", "chinese"],
+  "author": "WenCode Team",
+  "license": "MIT",
+  "dependencies": {
+    "@wencode/core": "^0.1.0"
+  },
+  "devDependencies": {
+    "tsup": "^8.0.0"
+  }
+}

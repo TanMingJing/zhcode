@@ -1,0 +1,25 @@
+{
+  "name": "@wencode/ai-service",
+  "version": "0.1.0",
+  "description": "WenCode AI backend service",
+  "main": "dist/server.js",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "build": "tsup src/server.ts",
+    "test": "vitest",
+    "start": "node dist/server.js",
+    "lint": "eslint src --ext .ts",
+    "type-check": "tsc --noEmit"
+  },
+  "files": ["dist"],
+  "keywords": ["ai", "api", "backend"],
+  "author": "WenCode Team",
+  "license": "MIT",
+  "dependencies": {
+    "@wencode/core": "^0.1.0"
+  },
+  "devDependencies": {
+    "tsup": "^8.0.0",
+    "tsx": "^4.7.0"
+  }
+}
