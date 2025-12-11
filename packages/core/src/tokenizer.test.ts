@@ -45,7 +45,8 @@ describe('Tokenizer', () => {
     it('should recognize control flow keywords', () => {
       const tokens = tokenize('如果 (条件) { } 否则 { }');
       expect(tokens[0].type).toBe(TokenType.IF);
-      expect(tokens[4].type).toBe(TokenType.ELSE);
+      // tokens: [IF, LPAREN, IDENTIFIER(条件), RPAREN, LBRACE, RBRACE, ELSE, ...]
+      expect(tokens[6].type).toBe(TokenType.ELSE);
     });
 
     it('should recognize loop keywords', () => {
@@ -175,7 +176,7 @@ describe('Tokenizer', () => {
     });
 
     it('should handle whitespace-only input', () => {
-      const tokens = tokenize('   \\n   ');
+      const tokens = tokenize('   \n   ');
       expect(tokens.length).toBe(1); // EOF only
     });
 

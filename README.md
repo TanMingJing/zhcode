@@ -209,9 +209,8 @@ MIT License - 详见 [LICENSE](LICENSE) 文件。
 
 ## 联系方式
 
-- 📧 邮件：team@wencode.dev（待设置）
+- 📧 邮件：mjtan091123@gmail.com
 - 💬 讨论：GitHub Discussions
-- 🐦 Twitter：@wencode（待设置）
 
 ## 致谢
 
