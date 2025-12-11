@@ -18,7 +18,6 @@
       {
         "argsIgnorePattern": "^_"
       }
-    ],
-    "@typescript-eslint/explicit-function-return-types": "warn"
+    ]
   }
 }

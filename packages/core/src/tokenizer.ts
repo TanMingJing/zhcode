@@ -3,7 +3,7 @@
  * Converts source code into a stream of tokens
  */
 
-import { Token, TokenType, IToken } from './token';
+import { Token, TokenType } from './token';
 import { isKeyword, getKeywordType } from './keywords';
 
 export interface TokenizerOptions {
@@ -210,7 +210,7 @@ export class Tokenizer {
     this.advance(); // Skip opening quote
 
     let value = '';
-    let isTemplate = quote === '`';
+    const isTemplate = quote === '`';
 
     while (this.position < this.source.length && this.peek() !== quote) {
       if (this.peek() === '\\') {
@@ -435,10 +435,10 @@ export class Tokenizer {
         return TokenType.OPTIONAL_CHAIN;
       case '??':
         return TokenType.NULLISH_COALESCE;
-      case '==':
-        return TokenType.EQUALS;
-      case '/>':
-        return TokenType.JSX_SELF_CLOSING;
+      case '===':
+        return TokenType.STRICT_EQUALS;
+      case '!==':
+        return TokenType.STRICT_NOT_EQUALS;
       default:
         return null;
     }

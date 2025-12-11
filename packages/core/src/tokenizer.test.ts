@@ -1,6 +1,5 @@
-// @ts-ignore - vitest types not installed, but vitest will work at runtime
 import { describe, it, expect } from 'vitest';
-import { Tokenizer, tokenize } from './tokenizer';
+import { tokenize } from './tokenizer';
 import { TokenType } from './token';
 
 describe('Tokenizer', () => {
