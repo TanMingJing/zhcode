@@ -375,6 +375,21 @@ export class Tokenizer {
       return new Token(TokenType.SPREAD, '...', startLine, startColumn, startPos, this.position);
     }
 
+    // Strict equality operators (must be checked before == and !=)
+    if (char === '=' && nextChar === '=' && nextNextChar === '=') {
+      this.advance();
+      this.advance();
+      this.advance();
+      return new Token(TokenType.STRICT_EQUALS, '===', startLine, startColumn, startPos, this.position);
+    }
+
+    if (char === '!' && nextChar === '=' && nextNextChar === '=') {
+      this.advance();
+      this.advance();
+      this.advance();
+      return new Token(TokenType.STRICT_NOT_EQUALS, '!==', startLine, startColumn, startPos, this.position);
+    }
+
     if (char === '<' && nextChar === '/' && nextNextChar !== '>') {
       this.advance();
       this.advance();
@@ -435,10 +450,6 @@ export class Tokenizer {
         return TokenType.OPTIONAL_CHAIN;
       case '??':
         return TokenType.NULLISH_COALESCE;
-      case '===':
-        return TokenType.STRICT_EQUALS;
-      case '!==':
-        return TokenType.STRICT_NOT_EQUALS;
       default:
         return null;
     }
