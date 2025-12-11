@@ -407,7 +407,7 @@ export class Parser {
           end: importedToken.end,
         };
 
-        let local = imported;
+        const local = imported;
         // TODO: Support 'as' alias if needed
 
         specifiers.push({
@@ -771,7 +771,7 @@ export class Parser {
   private parseCallMember(): AST.Expression {
     let expr = this.parseAtom();
 
-    while (true) {
+    while (this.check(TokenType.LPAREN) || this.check(TokenType.DOT) || this.check(TokenType.LBRACKET)) {
       if (this.match(TokenType.LPAREN)) {
         // Function call: expr()
         const args: AST.Expression[] = [];

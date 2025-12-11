@@ -376,7 +376,7 @@ describe('Parser', () => {
     it('should parse chained member and call expressions', () => {
       const ast = parseCode('obj.method().value[0];');
       const stmt = ast.body[0] as AST.ExpressionStatement;
-      let expr = stmt.expression as AST.MemberExpression;
+      const expr = stmt.expression as AST.MemberExpression;
       
       // Outermost: [0] access
       expect(expr.type).toBe('MemberExpression');
