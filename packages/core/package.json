@@ -4,6 +4,9 @@
   "description": "WenCode language core: Tokenizer, Parser, Transpiler",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "bin": {
+    "wencode": "dist/bin/wencode.js"
+  },
   "exports": {
     ".": {
       "import": "./dist/index.js",
@@ -12,7 +15,7 @@
   },
   "scripts": {
     "dev": "tsup src/index.ts --watch",
-    "build": "tsup src/index.ts",
+    "build": "tsup src/index.ts src/bin/wencode.ts",
     "test": "vitest",
     "test:coverage": "vitest --coverage",
     "lint": "eslint src --ext .ts",
