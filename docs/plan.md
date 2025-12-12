@@ -100,11 +100,12 @@
 - [x] 搭建 Node.js 测试环境
   - [x] Vitest 测试框架配置完成
   - [x] 105 个单元测试全部通过（100% 通过率）
-- [ ] 实现基础 REPL（命令行交互环境）
-  - [ ] 接受用户输入的中文代码
-  - [ ] 实时编译和执行
-  - [ ] 显示执行结果或错误信息
-  - [ ] 支持多行代码输入
+- [x] 实现基础 REPL（命令行交互环境）
+  - [x] 接受用户输入的中文代码
+  - [x] 实时编译和执行（完整流程：Tokenizer → Parser → Transpiler → Executor）
+  - [x] 显示执行结果或错误信息
+  - [x] 支持特殊命令（帮助、退出、清空）
+  - [x] REPL 类实现完整，支持交互式和同步执行
 - [x] 编写单元测试框架（Vitest/Jest）
   - [x] 已配置 Vitest（在根 package.json）
   - [x] 24 个 Tokenizer 测试（通过）
@@ -122,7 +123,7 @@
   - [x] pnpm-lock.yaml 已提交
   - [x] master 和 main 分支同步
 
-### 1.6 开发工具
+### 1.6 开发工具与基础设施
 - [x] 初始化 Monorepo 项目结构（使用 pnpm workspaces）
   - [x] pnpm-workspace.yaml 已配置
   - [x] 根 package.json 配置完成
@@ -141,6 +142,19 @@
 - [x] 配置包发布流程（npm）
   - [x] @wencode/core 包结构已配置
   - [x] package.json 已配置
+
+### 1.7 CLI 工具与可执行程序
+- [x] 创建 CLI 工具（wencode）
+  - [x] bin/wencode.ts 入口文件完成
+  - [x] 支持 repl 命令（启动交互环境）
+  - [x] 支持 run 命令（执行 .wen 文件）
+  - [x] 支持 compile 命令（编译成 JavaScript）
+  - [x] 支持 help 命令（显示帮助信息）
+  - [x] 支持 version 命令（显示版本号）
+- [x] 集成完整编译流程
+  - [x] Tokenizer → Parser → Transpiler → Executor
+  - [x] 错误处理与展示
+  - [x] 支持中英文混用
 
 ---
 
