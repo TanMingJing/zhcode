@@ -97,32 +97,50 @@
   - [x] 函数与控制流的正确格式
 
 ### 1.5 运行环境与测试
-- [ ] 搭建 Node.js 测试环境
+- [x] 搭建 Node.js 测试环境
+  - [x] Vitest 测试框架配置完成
+  - [x] 105 个单元测试全部通过（100% 通过率）
 - [ ] 实现基础 REPL（命令行交互环境）
   - [ ] 接受用户输入的中文代码
   - [ ] 实时编译和执行
   - [ ] 显示执行结果或错误信息
   - [ ] 支持多行代码输入
-- [ ] 编写单元测试框架（Vitest/Jest）
+- [x] 编写单元测试框架（Vitest/Jest）
   - [x] 已配置 Vitest（在根 package.json）
   - [x] 24 个 Tokenizer 测试（通过）
   - [x] 48 个 Parser 测试（通过）
   - [x] 32 个集成测试（通过）
   - [x] 1 个索引导出测试（通过）
-- [ ] 创建测试用例集（语法、关键字、编译流程）
+  - [x] **总计：105/105 测试通过（100% 通过率）**
+- [x] 创建测试用例集（语法、关键字、编译流程）
   - [x] 全面覆盖语法特性
   - [x] 中文标点符号测试
   - [x] 端到端编译流程测试
-- [ ] 建立 CI/CD 流程（GitHub Actions）
+- [x] 建立 CI/CD 流程（GitHub Actions）
   - [x] 已配置 lint 和 test 作业
   - [x] 所有检查通过
+  - [x] pnpm-lock.yaml 已提交
+  - [x] master 和 main 分支同步
 
 ### 1.6 开发工具
-- [ ] 初始化 Monorepo 项目结构（使用 pnpm/yarn workspaces）
-- [ ] 配置 TypeScript 与 ESLint
-- [ ] 设置 Prettier 代码格式化
-- [ ] 建立版本管理（Git + GitHub）
-- [ ] 配置包发布流程（npm）
+- [x] 初始化 Monorepo 项目结构（使用 pnpm workspaces）
+  - [x] pnpm-workspace.yaml 已配置
+  - [x] 根 package.json 配置完成
+  - [x] pnpm-lock.yaml 已提交
+- [x] 配置 TypeScript 与 ESLint
+  - [x] tsconfig.json 配置完成
+  - [x] ESLint 规则配置完成
+  - [x] 0 个 TypeScript 错误
+  - [x] 0 个 ESLint 错误
+- [x] 设置 Prettier 代码格式化
+  - [x] .prettierrc 已配置
+- [x] 建立版本管理（Git + GitHub）
+  - [x] GitHub 仓库 HackerTMJ/wencode 已创建
+  - [x] master 和 main 分支已同步
+  - [x] 所有更改已提交
+- [x] 配置包发布流程（npm）
+  - [x] @wencode/core 包结构已配置
+  - [x] package.json 已配置
 
 ---
 
