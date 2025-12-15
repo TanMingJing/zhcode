@@ -1,9 +1,9 @@
-# WenCode 项目完整结构
+# ZhCode 项目完整结构
 
 ## 目录树
 
 ```
-wencode/
+zhcode/
 │
 ├── .github/
 │   └── workflows/
@@ -155,12 +155,12 @@ wencode/
 
 ### pnpm Workspaces 结构
 ```
-wencode (root)
-├── @wencode/core          # 其他包的依赖
-├── @wencode/cli           # 依赖 @wencode/core
-├── @wencode/ide           # 依赖 @wencode/core
-├── @wencode/vscode-ext    # （可选）依赖 @wencode/core
-└── @wencode/ai-service    # 依赖 @wencode/core
+zhcode (root)
+├── @zhcode/core          # 其他包的依赖
+├── @zhcode/cli           # 依赖 @zhcode/core
+├── @zhcode/ide           # 依赖 @zhcode/core
+├── @zhcode/vscode-ext    # （可选）依赖 @zhcode/core
+└── @zhcode/ai-service    # 依赖 @zhcode/core
 ```
 
 ### 共享依赖（Root package.json）
@@ -179,11 +179,11 @@ wencode (root)
 ```
 
 ### 包专用依赖
-- **@wencode/core**: `tsup` (构建工具)
-- **@wencode/cli**: `tsup`
-- **@wencode/ide**: `react`, `react-dom`, `vite`, `@vitejs/plugin-react`
-- **@wencode/vscode-ext**: `@types/vscode`
-- **@wencode/ai-service**: `tsx` (TS 执行)
+- **@zhcode/core**: `tsup` (构建工具)
+- **@zhcode/cli**: `tsup`
+- **@zhcode/ide**: `react`, `react-dom`, `vite`, `@vitejs/plugin-react`
+- **@zhcode/vscode-ext**: `@types/vscode`
+- **@zhcode/ai-service**: `tsx` (TS 执行)
 
 ---
 
@@ -214,9 +214,9 @@ pnpm format
 pnpm type-check
 
 # 按包操作示例
-pnpm -F @wencode/core test
-pnpm -F @wencode/ide dev
-pnpm -F @wencode/cli build
+pnpm -F @zhcode/core test
+pnpm -F @zhcode/ide dev
+pnpm -F @zhcode/cli build
 ```
 
 ---
@@ -225,7 +225,7 @@ pnpm -F @wencode/cli build
 
 | 项目 | 版本 |
 |------|------|
-| WenCode | v0.1.0 |
+| ZhCode | v0.1.0 |
 | Node.js 要求 | 18.0+ |
 | pnpm 要求 | 8.0+ |
 | TypeScript | 5.3+ |
@@ -255,9 +255,9 @@ pnpm -F @wencode/cli build
 - [ ] 完整测试
 
 #### 1.6 CLI 工具
-- [ ] `wencode compile` 命令
-- [ ] `wencode run` 命令
-- [ ] `wencode init` 命令
+- [ ] `zhcode compile` 命令
+- [ ] `zhcode run` 命令
+- [ ] `zhcode init` 命令
 - [ ] Help 和版本信息
 
 ---
@@ -289,7 +289,7 @@ PHASE1_SUMMARY.md ~300 行
 
 | 资源 | 位置 |
 |------|------|
-| 项目根目录 | `c:\Users\mjtan\Desktop\wencode` |
+| 项目根目录 | `c:\Users\mjtan\Desktop\zhcode` |
 | 语言规范 | `docs/language-spec.md` |
 | 开发计划 | `docs/plan.md` |
 | 快速开始 | `GETTING_STARTED.md` |

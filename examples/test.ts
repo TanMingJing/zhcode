@@ -1,7 +1,7 @@
 // Manual test - no npm/vitest needed!
 import { tokenize, TokenType } from './index';
 
-console.log('=== WenCode Tokenizer Manual Test ===\n');
+console.log('=== ZhCode Tokenizer Manual Test ===\n');
 
 // Test 1: Basic number
 console.log('Test 1: Tokenize number "123"');

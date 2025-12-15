@@ -1,0 +1,16 @@
+// React Hooks - 最简版本
+
+// 简单的 useState 解构赋值
+令 [计数, 设置计数] = React.useState(0);
+
+// 多个状态变量
+令 [用户, 设置用户] = React.useState(null);
+
+// 调用 React API
+React.useEffect(handleEffect, []);
+
+// 在函数中使用
+函数 计数器组件() {
+  令 [状态, 设置状态] = React.useState(初值);
+  返回 <div>{状态}</div>;
+}

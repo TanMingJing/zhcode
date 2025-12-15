@@ -1,7 +1,7 @@
 {
-  "name": "@wencode/ai-service",
+  "name": "@zhcode/ai-service",
   "version": "0.1.0",
-  "description": "WenCode AI backend service",
+  "description": "ZhCode AI backend service",
   "main": "dist/server.js",
   "scripts": {
     "dev": "tsx watch src/server.ts",
@@ -13,10 +13,10 @@
   },
   "files": ["dist"],
   "keywords": ["ai", "api", "backend"],
-  "author": "WenCode Team",
+  "author": "ZhCode Team",
   "license": "MIT",
   "dependencies": {
-    "@wencode/core": "^0.1.0"
+    "@zhcode/core": "^0.1.0"
   },
   "devDependencies": {
     "tsup": "^8.0.0",

@@ -1,10 +1,10 @@
-# 华语代码语言（WenCode）
+# 华语代码语言（ZhCode）
 
 A modern programming language with Chinese keywords, AI-driven development, and JavaScript/React compatibility.
 
 ## 项目概述
 
-**WenCode** 是一款革命性的编程语言，旨在：
+**ZhCode** 是一款革命性的编程语言，旨在：
 - 📝 使用中文关键词编程（`函数`、`返回`、`如果`等）
 - 🤖 集成 AI 功能（自动代码生成、错误解释、代码优化）
 - ⚛️ 与 React.js 和 JavaScript 生态完全兼容
@@ -14,7 +14,7 @@ A modern programming language with Chinese keywords, AI-driven development, and 
 ## 项目结构
 
 ```
-wencode/
+zhcode/
 ├── packages/
 │   ├── core/              # 语言解析层（Tokenizer, Parser, Transpiler）
 │   ├── cli/               # 命令行工具
@@ -66,41 +66,41 @@ pnpm type-check
 
 ```bash
 # 仅在 core 包中运行
-pnpm -F @wencode/core build
+pnpm -F @zhcode/core build
 
 # 在 IDE 包中启动开发服务器
-pnpm -F @wencode/ide dev
+pnpm -F @zhcode/ide dev
 ```
 
 ## 包描述
 
-### @wencode/core
+### @zhcode/core
 语言核心引擎，包含：
 - **Tokenizer**: 中文和符号的词法分析
 - **Parser**: AST 解析器
 - **Transpiler**: 转译到 JavaScript
 
-### @wencode/cli
+### @zhcode/cli
 命令行工具：
-- `wencode compile <file>` - 编译文件
-- `wencode run <file>` - 运行文件
-- `wencode init` - 初始化项目
+- `zhcode compile <file>` - 编译文件
+- `zhcode run <file>` - 运行文件
+- `zhcode init` - 初始化项目
 
-### @wencode/ide
+### @zhcode/ide
 基于 React 和 Vite 的 Web IDE，包含：
 - 代码编辑器（Monaco Editor）
 - 文件树导航
 - 实时编译与执行
 - 主题切换
 
-### @wencode/vscode-ext
+### @zhcode/vscode-ext
 VS Code 扩展，提供：
 - 语法高亮
 - 代码片段
 - 编译和运行支持
 - 语言服务（LSP）
 
-### @wencode/ai-service
+### @zhcode/ai-service
 AI 驱动的后端服务：
 - 自动代码生成
 - 错误解释
@@ -139,7 +139,7 @@ AI 驱动的后端服务：
 ## 代码示例
 
 ### 基础语法
-```wencode
+```zhcode
 函数 问好(名字) {
   返回 "你好，" + 名字;
 }
@@ -148,7 +148,7 @@ AI 驱动的后端服务：
 ```
 
 ### React 组件
-```wencode
+```zhcode
 组件 计数器() {
   令 [计数, 设置计数] = 使用状态(0);
   

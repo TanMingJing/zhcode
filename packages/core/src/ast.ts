@@ -1,6 +1,6 @@
 /**
  * Abstract Syntax Tree (AST) Node Definitions
- * Defines all node types used by the WenCode parser
+ * Defines all node types used by the ZhCode parser
  */
 
 /**
@@ -37,8 +37,16 @@ export interface VariableDeclaration extends ASTNode {
 
 export interface VariableDeclarator extends ASTNode {
   type: 'VariableDeclarator';
-  id: Identifier;
+  id: Identifier | ArrayPattern;
   init: Expression | null;
+}
+
+/**
+ * Array pattern for destructuring: [a, b, c]
+ */
+export interface ArrayPattern extends ASTNode {
+  type: 'ArrayPattern';
+  elements: (Identifier | null)[]; // null for holes like [a, , c]
 }
 
 /**
@@ -318,6 +326,8 @@ export type Expression =
   | ArrayExpression
   | ObjectExpression
   | TemplateLiteral
+  | JSXElement
+  | JSXFragment
   | Identifier
   | Literal;
 
@@ -325,3 +335,90 @@ export type Expression =
  * Union of all AST node types
  */
 export type ASTNodeType = Program | Statement | Expression | ASTNode;
+
+// ============================================================================
+// JSX NODES
+// ============================================================================
+
+/**
+ * JSX Element node (<Component prop="value">children</Component>)
+ */
+export interface JSXElement extends ASTNode {
+  type: 'JSXElement';
+  openingElement: JSXOpeningElement;
+  closingElement: JSXClosingElement | null;
+  children: (JSXElement | JSXText | Expression)[];
+}
+
+/**
+ * JSX Fragment node (<>children</>)
+ */
+export interface JSXFragment extends ASTNode {
+  type: 'JSXFragment';
+  children: (JSXElement | JSXText | Expression)[];
+}
+
+/**
+ * JSX Opening Element (<Component prop="value">)
+ */
+export interface JSXOpeningElement extends ASTNode {
+  type: 'JSXOpeningElement';
+  name: JSXIdentifier | JSXMemberExpression;
+  attributes: JSXAttribute[];
+  selfClosing: boolean;
+}
+
+/**
+ * JSX Closing Element (</Component>)
+ */
+export interface JSXClosingElement extends ASTNode {
+  type: 'JSXClosingElement';
+  name: JSXIdentifier | JSXMemberExpression;
+}
+
+/**
+ * JSX Identifier (Component or 按钮)
+ */
+export interface JSXIdentifier extends ASTNode {
+  type: 'JSXIdentifier';
+  name: string;
+}
+
+/**
+ * JSX Member Expression (Module.Component)
+ */
+export interface JSXMemberExpression extends ASTNode {
+  type: 'JSXMemberExpression';
+  object: JSXIdentifier | JSXMemberExpression;
+  property: JSXIdentifier;
+}
+
+/**
+ * JSX Attribute (prop="value" or prop={expression})
+ */
+export interface JSXAttribute extends ASTNode {
+  type: 'JSXAttribute';
+  name: JSXIdentifier;
+  value: JSXAttributeValue | null;
+}
+
+/**
+ * JSX Attribute Value
+ */
+export type JSXAttributeValue = Literal | JSXExpressionContainer;
+
+/**
+ * JSX Expression Container ({expression})
+ */
+export interface JSXExpressionContainer extends ASTNode {
+  type: 'JSXExpressionContainer';
+  expression: Expression;
+}
+
+/**
+ * JSX Text node
+ */
+export interface JSXText extends ASTNode {
+  type: 'JSXText';
+  value: string;
+}

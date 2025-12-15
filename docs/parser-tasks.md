@@ -451,7 +451,7 @@ When complete, you should have:
 - ✅ 30+ passing parser tests
 - ✅ 0 TypeScript errors
 - ✅ 0 ESLint errors
-- ✅ Parse real WenCode programs correctly
+- ✅ Parse real ZhCode programs correctly
 - ✅ Accurate position tracking (line/column)
 - ✅ Helpful error messages on parse failures
 
@@ -462,7 +462,7 @@ When complete, you should have:
 Once parser is complete, you'll use the AST to generate JavaScript code:
 
 ```
-WenCode Source
+ZhCode Source
     ↓
 Tokenizer (Phase 1.2) ✅
     ↓

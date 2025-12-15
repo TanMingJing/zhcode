@@ -15,22 +15,22 @@ const version = '0.1.0';
  */
 function showHelp(): void {
   console.log(`
-WenCode - A Chinese Programming Language
+ZhCode - A Chinese Programming Language
 
 Usage:
-  wencode [command] [options]
+  zhcode [command] [options]
 
 Commands:
   repl              Start interactive REPL (default)
-  run <file>        Execute a .wen file
+  run <file>        Execute a .zhc file
   compile <file>    Compile to JavaScript (output to stdout)
   help              Show this help message
   version           Show version
 
 Examples:
-  wencode repl
-  wencode run program.wen
-  wencode compile program.wen > program.js
+  zhcode repl
+  zhcode run program.zhc
+  zhcode compile program.zhc > program.js
   `);
 }
 
@@ -38,11 +38,11 @@ Examples:
  * Display version information
  */
 function showVersion(): void {
-  console.log(`wencode v${version}`);
+  console.log(`zhcode v${version}`);
 }
 
 /**
- * Execute a .wen file
+ * Execute a .zhc file
  */
 function runFile(filePath: string): void {
   try {
@@ -89,7 +89,7 @@ function runFile(filePath: string): void {
 }
 
 /**
- * Compile a .wen file to JavaScript
+ * Compile a .zhc file to JavaScript
  */
 function compileFile(filePath: string): void {
   try {
@@ -139,14 +139,14 @@ function main(): void {
   } else if (args[0] === 'run') {
     if (!args[1]) {
       console.error('Error: Missing file path');
-      console.error('Usage: wencode run <file>');
+      console.error('Usage: zhcode run <file>');
       process.exit(1);
     }
     runFile(args[1]);
   } else if (args[0] === 'compile') {
     if (!args[1]) {
       console.error('Error: Missing file path');
-      console.error('Usage: wencode compile <file>');
+      console.error('Usage: zhcode compile <file>');
       process.exit(1);
     }
     compileFile(args[1]);
@@ -156,7 +156,7 @@ function main(): void {
     showVersion();
   } else {
     console.error(`Error: Unknown command '${args[0]}'`);
-    console.error('Run "wencode help" for usage information');
+    console.error('Run "zhcode help" for usage information');
     process.exit(1);
   }
 }

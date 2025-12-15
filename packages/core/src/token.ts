@@ -1,5 +1,5 @@
 /**
- * Token Types for WenCode Language
+ * Token Types for ZhCode Language
  * Defines all possible token types used by the lexer
  */
 

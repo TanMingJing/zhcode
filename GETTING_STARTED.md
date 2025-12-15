@@ -4,7 +4,7 @@
 
 ### 1. 项目结构
 ```
-wencode/
+zhcode/
 ├── packages/
 │   ├── core/        ✅ 核心语言引擎
 │   ├── cli/         ✅ 命令行工具
@@ -78,7 +78,7 @@ touch src/tokenizer/tokenizer.test.ts
 npm install -g pnpm
 
 # 2. 进入项目目录
-cd c:\Users\mjtan\Desktop\wencode
+cd c:\Users\mjtan\Desktop\zhcode
 
 # 3. 安装所有依赖
 pnpm install
@@ -96,9 +96,9 @@ pnpm lint
 cd packages/core
 
 # 或在根目录运行 core 包专用命令
-pnpm -F @wencode/core dev
-pnpm -F @wencode/core test
-pnpm -F @wencode/core build
+pnpm -F @zhcode/core dev
+pnpm -F @zhcode/core test
+pnpm -F @zhcode/core build
 ```
 
 ---
@@ -168,7 +168,7 @@ src/
 
 ```bash
 # 1. 进入项目目录
-cd c:\Users\mjtan\Desktop\wencode
+cd c:\Users\mjtan\Desktop\zhcode
 
 # 2. 进入 core 包
 cd packages/core

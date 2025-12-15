@@ -1,21 +1,21 @@
 {
-  "name": "@wencode/core",
+  "name": "@zhcode/core",
   "version": "0.1.0",
-  "description": "WenCode language core: Tokenizer, Parser, Transpiler",
+  "description": "ZhCode language core: Tokenizer, Parser, Transpiler",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "bin": {
-    "wencode": "dist/bin/wencode.js"
+    "zhcode": "dist/bin/zhcode.js"
   },
   "exports": {
     ".": {
-      "import": "./dist/index.js",
-      "require": "./dist/index.js"
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
     }
   },
   "scripts": {
     "dev": "tsup src/index.ts --watch",
-    "build": "tsup src/index.ts src/bin/wencode.ts",
+    "build": "tsup src/index.ts src/bin/zhcode.ts",
     "test": "vitest",
     "test:coverage": "vitest --coverage",
     "lint": "eslint src --ext .ts",
@@ -23,7 +23,7 @@
   },
   "files": ["dist"],
   "keywords": ["language", "parser", "tokenizer", "transpiler", "chinese"],
-  "author": "WenCode Team",
+  "author": "ZhCode Team",
   "license": "MIT",
   "devDependencies": {
     "tsup": "^8.0.0",

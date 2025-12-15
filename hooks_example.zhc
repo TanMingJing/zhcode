@@ -1,0 +1,62 @@
+// React Hooks 示例
+
+// useState 示例
+函数 计数器() {
+  令 [计数, 设置计数] = React.useState(0);
+  
+  函数 增加() {
+    设置计数(计数 + 1);
+  }
+  
+  返回 (
+    <div className="counter">
+      <p>计数: {计数}</p>
+      <Button onClick={增加}>增加</Button>
+    </div>
+  );
+}
+
+// useEffect 示例
+函数 带副作用的组件() {
+  令 [数据, 设置数据] = React.useState(null);
+  
+  React.useEffect(() => {
+    输出("组件已挂载");
+    返回 () => {
+      输出("组件将卸载");
+    };
+  }, []);
+  
+  返回 <div>{数据}</div>;
+}
+
+// 多个 hooks
+函数 复杂组件() {
+  令 [用户名, 设置用户名] = React.useState("");
+  令 [邮箱, 设置邮箱] = React.useState("");
+  令 [已加载, 设置已加载] = React.useState(false);
+  
+  React.useEffect(() => {
+    设置已加载(true);
+  }, []);
+  
+  返回 (
+    <form>
+      <input 
+        type="text" 
+        value={用户名} 
+        onChange={(e) => 设置用户名(e.target.value)}
+        placeholder="输入用户名"
+      />
+      <input 
+        type="email" 
+        value={邮箱} 
+        onChange={(e) => 设置邮箱(e.target.value)}
+        placeholder="输入邮箱"
+      />
+      <Button disabled={!已加载}>
+        {已加载 ? "提交" : "加载中..."}
+      </Button>
+    </form>
+  );
+}

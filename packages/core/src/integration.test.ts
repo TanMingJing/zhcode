@@ -1,6 +1,6 @@
 /**
  * Integration Tests: Tokenizer -> Parser -> Transpiler
- * Tests the complete WenCode compilation pipeline
+ * Tests the complete ZhCode compilation pipeline
  */
 
 import { describe, it, expect } from 'vitest';
@@ -9,10 +9,10 @@ import { Parser } from './parser';
 import { Transpiler } from './transpiler';
 
 /**
- * Helper function to compile WenCode to JavaScript
+ * Helper function to compile ZhCode to JavaScript
  */
-function compile(wenCode: string): string {
-  const tokenizer = new Tokenizer(wenCode);
+function compile(zhCode: string): string {
+  const tokenizer = new Tokenizer(zhCode);
   const tokens = tokenizer.tokenize();
   const parser = new Parser(tokens);
   const ast = parser.parse();
@@ -20,7 +20,7 @@ function compile(wenCode: string): string {
   return transpiler.transpile(ast);
 }
 
-describe('Integration: WenCode Compilation Pipeline', () => {
+describe('Integration: ZhCode Compilation Pipeline', () => {
   describe('Simple Expressions', () => {
     it('should compile simple number literal', () => {
       const result = compile('10;');

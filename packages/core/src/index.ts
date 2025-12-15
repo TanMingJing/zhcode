@@ -1,4 +1,4 @@
-// WenCode Core - Language Parser & Transpiler
+// ZhCode Core - Language Parser & Transpiler
 // Main entry point for the language engine
 
 export { Token, TokenType, IToken } from './token';
@@ -12,5 +12,5 @@ export * from './ast';
 export const VERSION = '0.1.0';
 
 export function hello(): string {
-  return 'Hello from WenCode Core!';
+  return 'Hello from ZhCode Core!';
 }

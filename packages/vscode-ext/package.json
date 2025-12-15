@@ -1,13 +1,13 @@
 {
-  "name": "@wencode/vscode-ext",
+  "name": "@zhcode/vscode-ext",
   "version": "0.1.0",
-  "description": "WenCode VS Code Extension",
-  "publisher": "wencode",
+  "description": "ZhCode VS Code Extension",
+  "publisher": "zhcode",
   "engines": {
     "vscode": "^1.84.0"
   },
   "activationEvents": [
-    "onLanguage:wencode"
+    "onLanguage:zhcode"
   ],
   "main": "./dist/extension.js",
   "scripts": {

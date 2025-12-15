@@ -129,7 +129,7 @@
 ### Tokenizer 实现
 👉 [packages/core/src/tokenizer.ts](../packages/core/src/tokenizer.ts)
 - 650+ 行完整实现
-- 支持所有 WenCode 语言特性
+- 支持所有 ZhCode 语言特性
 - 详细的代码注释
 
 ### 测试
@@ -143,7 +143,7 @@
 
 ### 安装依赖
 ```bash
-cd c:\Users\mjtan\Desktop\wencode
+cd c:\Users\mjtan\Desktop\zhcode
 pnpm install
 ```
 
@@ -153,10 +153,10 @@ pnpm install
 pnpm test
 
 # 运行 core 包测试
-pnpm -F @wencode/core test
+pnpm -F @zhcode/core test
 
 # 显示测试覆盖率
-pnpm -F @wencode/core test:coverage
+pnpm -F @zhcode/core test:coverage
 ```
 
 ### 编译项目
@@ -165,7 +165,7 @@ pnpm -F @wencode/core test:coverage
 pnpm build
 
 # 仅构建 core 包
-pnpm -F @wencode/core build
+pnpm -F @zhcode/core build
 ```
 
 ### 代码检查
@@ -187,7 +187,7 @@ pnpm format
 ### 在 TypeScript 中使用 Tokenizer
 
 ```typescript
-import { tokenize, TokenType } from '@wencode/core';
+import { tokenize, TokenType } from '@zhcode/core';
 
 // 简单使用
 const tokens = tokenize('令 x = 10;');
@@ -205,7 +205,7 @@ tokens.forEach(token => {
 ```
 
 ### Tokenizer 输入示例
-```wencode
+```zhcode
 // 中文代码示例
 函数 加法(a, b) {
   返回 a + b;

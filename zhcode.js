@@ -1,14 +1,14 @@
 #!/usr/bin/env node
 
 /**
- * Wencode CLI Wrapper
+ * ZhCode CLI Wrapper
  * Forwards commands to the compiled CLI in packages/core
  */
 
 const path = require('path');
 const { execSync } = require('child_process');
 
-const cliPath = path.join(__dirname, 'packages', 'core', 'dist', 'bin', 'wencode.js');
+const cliPath = path.join(__dirname, 'packages', 'core', 'dist', 'bin', 'zhcode.js');
 const args = process.argv.slice(2);
 
 try {

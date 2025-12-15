@@ -136,18 +136,18 @@
 - [x] 设置 Prettier 代码格式化
   - [x] .prettierrc 已配置
 - [x] 建立版本管理（Git + GitHub）
-  - [x] GitHub 仓库 HackerTMJ/wencode 已创建
+  - [x] GitHub 仓库 HackerTMJ/zhcode 已创建
   - [x] master 和 main 分支已同步
   - [x] 所有更改已提交
 - [x] 配置包发布流程（npm）
-  - [x] @wencode/core 包结构已配置
+  - [x] @zhcode/core 包结构已配置
   - [x] package.json 已配置
 
 ### 1.7 CLI 工具与可执行程序
-- [x] 创建 CLI 工具（wencode）
-  - [x] bin/wencode.ts 入口文件完成
+- [x] 创建 CLI 工具（zhcode）
+  - [x] bin/zhcode.ts 入口文件完成
   - [x] 支持 repl 命令（启动交互环境）
-  - [x] 支持 run 命令（执行 .wen 文件）
+  - [x] 支持 run 命令（执行 .zhc 文件）
   - [x] 支持 compile 命令（编译成 JavaScript）
   - [x] 支持 help 命令（显示帮助信息）
   - [x] 支持 version 命令（显示版本号）
@@ -161,17 +161,39 @@
 ## Phase 2：React 兼容 & 工具链
 
 ### 2.1 JSX 支持
-- [ ] 扩展 Tokenizer 以识别 JSX 标签语法
-- [ ] 实现 JSX 到 JavaScript 的转译（使用 Babel 或自定义）
+- [x] 扩展 Tokenizer 以识别 JSX 标签语法
+  - [x] 识别 < 和 > 作为 JSX 标签开闭
+  - [x] 识别 /> 自闭合标签 (JSX_SELF_CLOSING 令牌)
+  - [x] 识别 </ 关闭标签 (JSX_SLASH 令牌)
+- [x] 实现 JSX 到 JavaScript 的转译（使用自定义转译器）
+  - [x] parseJSX() 和 parseJSXElement() 在 Parser 中实现
+  - [x] transpileJSXElement() 在 Transpiler 中实现
+  - [x] 转译为 React.createElement() 调用
+- [x] 支持属性解析与表达式插值
+  - [x] 属性映射为 props 对象
+  - [x] {expr} 表达式容器支持
+  - [x] 正确处理自闭合标签（无空children）
+- [x] 支持嵌套 JSX 元素
+  - [x] 多个 children 正确合并
+  - [x] 深层嵌套结构支持
+- [x] 11 个 JSX 集成测试用例
+  - [x] 简单元素、自闭合标签、多属性
+  - [x] 嵌套元素、表达式容器、中文文本
+  - [x] className、布尔属性、多个 children
+- [x] 支持 JSX Fragment（`<></>`）- Parser 与 Transpiler 完整实现
+- [x] 支持条件渲染（三元运算符）
+- [ ] 支持列表渲染与 .map()（待箭头函数完整支持）
 - [ ] 支持中文标签名（如 `<按钮>` → `<Button>`）
-- [ ] 支持属性解析与表达式插值
-- [ ] 支持 JSX Fragment（`<></>`）
 - [ ] 支持 Children 属性处理
 
 ### 2.2 React 组件语法
-- [ ] 定义组件声明关键字（组件 → function Component）
-- [ ] 支持 Props 参数传递
-- [ ] 支持 Hooks（useState、useEffect 等）
+- [x] 定义组件声明关键字（组件 → function Component）
+- [x] 支持 Props 参数传递 (通过普通函数参数)
+- [x] 支持 Hooks（useState、useEffect 等）
+  - [x] Array destructuring 支持 `[state, setState] = ...`
+  - [x] React.useState() 调用支持
+  - [x] React.useEffect() 调用支持
+  - [x] 10 个 hooks 集成测试
 - [ ] 支持条件渲染与列表渲染
 - [ ] 文档示例：创建一个中文组件
 
@@ -181,23 +203,26 @@
 - [ ] 实现 package.json 自动生成工具
 - [ ] 支持外部依赖导入（npm 包）
 - [ ] 测试与第三方库（React、lodash 等）的兼容性
-- [ ] 发布 npm 包（@wencode/core 或类似）
+- [ ] 发布 npm 包（@zhcode/core 或类似）
 
 ### 2.4 Web IDE 原型
-- [ ] 使用 React + Vite 搭建前端框架
-- [ ] 集成 Monaco Editor 或 CodeMirror
-- [ ] 实现编辑器 UI 布局（侧边栏、编辑区、输出区）
-- [ ] 实现文件树导航
-- [ ] 实现实时编译（监听代码变化）
-- [ ] 实现代码执行（WebWorker 或 iframe 沙箱）
-- [ ] 支持代码主题切换
+- [x] 使用 React + Vite 搭建前端框架
+- [x] 集成 Monaco Editor
+- [x] 实现编辑器 UI 布局（侧边栏、编辑区、输出区）
+- [x] 实现文件树导航与文件管理
+- [x] 实现实时编译（监听代码变化，500ms 去抖）
+- [x] 实现代码执行（JavaScript eval，console.log 捕获）
+- [x] 支持 4 个代码示例（数组操作、递归、计算器、基础）
+- [x] 支持 JavaScript 代码导出与下载
+- [ ] 支持代码主题切换（暗色主题完成）
+- [ ] 支持在线保存/同步
 
 ### 2.5 CLI 工具
-- [ ] 实现编译命令（`wencode compile file.wen`）
-- [ ] 实现运行命令（`wencode run file.wen`）
-- [ ] 实现初始化命令（`wencode init`）
+- [ ] 实现编译命令（`zhcode compile file.zhc`）
+- [ ] 实现运行命令（`zhcode run file.zhc`）
+- [ ] 实现初始化命令（`zhcode init`）
 - [ ] 实现 Watch 模式（自动编译）
-- [ ] 实现帮助文档（`wencode --help`）
+- [ ] 实现帮助文档（`zhcode --help`）
 
 ### 2.6 VS Code 扩展原型
 - [ ] 创建 VS Code Extension 项目结构

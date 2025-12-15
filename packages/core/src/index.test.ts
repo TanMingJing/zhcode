@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { hello } from './index';
 
-describe('WenCode Core', () => {
+describe('ZhCode Core', () => {
   it('should export hello function', () => {
-    expect(hello()).toBe('Hello from WenCode Core!');
+    expect(hello()).toBe('Hello from ZhCode Core!');
   });
 });

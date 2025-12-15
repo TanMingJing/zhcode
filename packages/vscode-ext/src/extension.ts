@@ -1,9 +1,9 @@
 import * as vscode from 'vscode';
 
 export function activate(_context: vscode.ExtensionContext): void {
-  console.log('WenCode extension activated!');
+  console.log('ZhCode extension activated!');
 }
 
 export function deactivate(): void {
-  console.log('WenCode extension deactivated!');
+  console.log('ZhCode extension deactivated!');
 }

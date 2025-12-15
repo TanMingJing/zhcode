@@ -1,7 +1,7 @@
 {
-  "name": "@wencode/ide",
+  "name": "@zhcode/ide",
   "version": "0.1.0",
-  "description": "WenCode Web IDE",
+  "description": "ZhCode Web IDE",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -11,7 +11,8 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
-    "@wencode/core": "^0.1.0",
+    "@monaco-editor/react": "^4.6.0",
+    "@zhcode/core": "^0.1.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0"
   },

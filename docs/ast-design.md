@@ -1,8 +1,8 @@
-# WenCode AST (Abstract Syntax Tree) Design
+# zhcode AST (Abstract Syntax Tree) Design
 
 ## Overview
 
-The AST represents the syntactic structure of WenCode source code in a tree format. The parser converts the token stream (from Tokenizer) into this AST, which the Transpiler then converts to JavaScript.
+The AST represents the syntactic structure of zhcode source code in a tree format. The parser converts the token stream (from Tokenizer) into this AST, which the Transpiler then converts to JavaScript.
 
 **Flow**: `Source Code` → `Tokenizer` → `Tokens` → `Parser` → `AST` → `Transpiler` → `JavaScript`
 
@@ -566,7 +566,7 @@ type Expression =
 ## 5. Parsing Examples
 
 ### Example 1: Simple Variable Declaration
-```wencode
+```zhcode
 令 x = 10;
 ```
 
@@ -598,7 +598,7 @@ type Expression =
 ---
 
 ### Example 2: Function Declaration
-```wencode
+```zhcode
 函数 add(a, b) {
   返回 a + b;
 }
@@ -643,7 +643,7 @@ type Expression =
 ---
 
 ### Example 3: If Statement with Complex Expression
-```wencode
+```zhcode
 如果 (x > 0 && y < 10) {
   返回 真;
 } 否则 {
@@ -737,5 +737,5 @@ The parser must handle operator precedence correctly:
 2. Create `parser.ts` with recursive descent parser implementation
 3. Implement `parseProgram()`, `parseStatement()`, `parseExpression()`
 4. Write 30+ parser unit tests
-5. Test with real WenCode examples
+5. Test with real zhcode examples
 

@@ -1,8 +1,8 @@
-# WenCode 语言规范 (Language Specification)
+# ZhCode 语言规范 (Language Specification)
 
 ## 1. 简介
 
-WenCode 是一门使用中文关键字的现代编程语言，编译到 JavaScript，支持 React.js 和现代 JavaScript 生态。本文档定义了 WenCode 的完整语言语法和语义。
+ZhCode 是一门使用中文关键字的现代编程语言，编译到 JavaScript，支持 React.js 和现代 JavaScript 生态。本文档定义了 ZhCode 的完整语言语法和语义。
 
 ---
 
@@ -115,7 +115,7 @@ _私有      ✓
 
 ### 2.5 注释 (Comments)
 
-```wencode
+```zhcode
 // 单行注释
 
 /* 多行注释
@@ -130,7 +130,7 @@ _私有      ✓
 
 ### 2.6 运算符与符号的中文名称 (Chinese Operator Names)
 
-WenCode 支持为运算符和标点符号定义中文名称，方便理解和学习：
+zhcode 支持为运算符和标点符号定义中文名称，方便理解和学习：
 
 | 符号 | 中文名称 | 用途 |
 |------|---------|------|
@@ -164,7 +164,7 @@ WenCode 支持为运算符和标点符号定义中文名称，方便理解和学
 | `...` | 扩展 | 扩展操作符 |
 
 **示例说明**：
-```wencode
+```zhcode
 // 使用中文名称理解运算符
 令 结果 = 加(5, 3);      // 用"加"理解+号
 令 判断 = x 大于 10;     // 用"大于"理解>号
@@ -192,7 +192,7 @@ Statement = Declaration | Expression | ControlFlow | Block
 ```
 
 **编译示例**：
-```wencode
+```zhcode
 令 x = 10;
 常量 PI = 3.14159;
 ```
@@ -211,7 +211,7 @@ const PI = 3.14159;
 ```
 
 **编译示例**：
-```wencode
+```zhcode
 函数 加法(a, b) {
   返回 a + b;
 }
@@ -347,7 +347,7 @@ typeof 值    // 类型检查
 ```
 
 **编译示例**：
-```wencode
+```zhcode
 如果(x > 0) {
   打印("正数");
 } 否则 {
@@ -379,7 +379,7 @@ if(x > 0) {
 ```
 
 **编译示例**：
-```wencode
+```zhcode
 对于(令 i = 0; i < 5; i = i + 1) {
   打印(i);
 }
@@ -418,7 +418,7 @@ for(let i = 0; i < 5; i = i + 1) {
 ### 3.5 React JSX 语法
 
 #### 组件定义 (Component Definition)
-```wencode
+```zhcode
 组件 问候(参数) {
   返回 <问候 名字={参数.名字}>你好</问候>;
 }
@@ -430,7 +430,7 @@ for(let i = 0; i < 5; i = i + 1) {
 ```
 
 #### JSX 表达式
-```wencode
+```zhcode
 令 元素 = <div 类="容器">
   <h1>标题</h1>
   <p>{内容}</p>
@@ -440,7 +440,7 @@ for(let i = 0; i < 5; i = i + 1) {
 ```
 
 #### JSX 属性
-```wencode
+```zhcode
 <按钮 
   点击={() => 处理()}
   禁用={假}
@@ -463,7 +463,7 @@ for(let i = 0; i < 5; i = i + 1) {
 
 ### 4.2 类型系统 (Type System)
 
-WenCode 使用动态类型（与 JavaScript 一致），但支持类型注解（待实现）。
+zhcode 使用动态类型（与 JavaScript 一致），但支持类型注解（待实现）。
 
 **基本类型**：
 - 数值 (Number): `123`, `3.14`
@@ -560,7 +560,7 @@ WenCode 使用动态类型（与 JavaScript 一致），但支持类型注解（
 
 ### 8.1 阶乘函数
 
-```wencode
+```zhcode
 函数 阶乘(n) {
   如果(n <= 1) {
     返回 1;
@@ -573,7 +573,7 @@ WenCode 使用动态类型（与 JavaScript 一致），但支持类型注解（
 
 ### 8.2 数组处理
 
-```wencode
+```zhcode
 令 数字 = [1, 2, 3, 4, 5];
 令 平方 = 数字.映射(x => x * x);
 打印(平方);  // 输出: [1, 4, 9, 16, 25]
@@ -581,7 +581,7 @@ WenCode 使用动态类型（与 JavaScript 一致），但支持类型注解（
 
 ### 8.3 对象与方法
 
-```wencode
+```zhcode
 令 人 = {
   名字: "张三",
   年龄: 25,
@@ -595,7 +595,7 @@ WenCode 使用动态类型（与 JavaScript 一致），但支持类型注解（
 
 ### 8.4 异步编程
 
-```wencode
+```zhcode
 异步 函数 获取数据() {
   尝试 {
     令 响应 = 等待 获取("https://api.example.com");
@@ -609,7 +609,7 @@ WenCode 使用动态类型（与 JavaScript 一致），但支持类型注解（
 
 ### 8.5 React 组件
 
-```wencode
+```zhcode
 组件 计数器() {
   令 [计数, 设置计数] = 使用状态(0);
   

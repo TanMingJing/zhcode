@@ -1,0 +1,187 @@
+// 华语代码 - 完整应用示例
+// 使用中文 UI 组件库构建待办应用
+
+导入 { 
+  按钮, 输入框, 卡片, 标题, 段落, 
+  容器, 行, 列, 模态框, 警告
+} 从 "./chinese-ui-lib";
+
+/**
+ * 待办应用 - 完整示例
+ * 展示如何用华语代码 + 中文组件库构建完整的 React 应用
+ */
+函数 待办应用() {
+  // 状态管理
+  令 [任务列表, 设置任务列表] = React.useState([
+    { 编号: 1, 标题: "学习华语代码", 完成: false },
+    { 编号: 2, 标题: "构建中文 UI 库", 完成: true }
+  ]);
+  
+  令 [输入值, 设置输入值] = React.useState("");
+  令 [显示完成, 设置显示完成] = React.useState(false);
+  令 [编辑中的, 设置编辑中] = React.useState(null);
+  令 [显示模态, 设置显示模态] = React.useState(false);
+  
+  // 副作用
+  React.useEffect(() => {
+    输出("应用已挂载");
+  }, []);
+  
+  // 事件处理
+  函数 添加任务() {
+    如果 (输入值.trim() === "") {
+      返回;
+    }
+    
+    令 新任务 = {
+      编号: 任务列表.length + 1,
+      标题: 输入值,
+      完成: false
+    };
+    
+    设置任务列表([...任务列表, 新任务]);
+    设置输入值("");
+  }
+  
+  函数 完成任务(编号) {
+    设置任务列表(任务列表.map(任务 => 
+      任务.编号 === 编号 ? { ...任务, 完成: !任务.完成 } : 任务
+    ));
+  }
+  
+  函数 删除任务(编号) {
+    设置任务列表(任务列表.filter(任务 => 任务.编号 !== 编号));
+  }
+  
+  // 过滤任务
+  令 显示的任务 = 显示完成 
+    ? 任务列表 
+    : 任务列表.filter(任务 => !任务.完成);
+  
+  // 统计
+  令 完成数 = 任务列表.filter(任务 => 任务.完成).length;
+  令 总数 = 任务列表.length;
+  
+  返回 (
+    <容器 className="app">
+      {/* 标题区域 */}
+      <行 对齐="center">
+        <标题 级别={1}>📝 我的待办清单</标题>
+      </行>
+      
+      {/* 进度条 */}
+      <卡片 className="progress-card">
+        <段落>
+          已完成 {完成数} / {总数} 任务
+        </段落>
+        <div className="progress-bar">
+          <div 
+            className="progress-fill" 
+            style={{ width: `${(完成数 / 总数) * 100}%` }}
+          ></div>
+        </div>
+      </卡片>
+      
+      {/* 输入区域 */}
+      <行 间距="8px">
+        <输入框
+          className="task-input"
+          占位符="输入新任务..."
+          值={输入值}
+          变化={(e) => 设置输入值(e.target.value)}
+        />
+        <按钮 onClick={添加任务} className="btn-primary">
+          ➕ 添加
+        </按钮>
+      </行>
+      
+      {/* 过滤选项 */}
+      <行 间距="8px">
+        <按钮 
+          onClick={() => 设置显示完成(false)}
+          className={显示完成 ? "btn-secondary" : "btn-primary"}
+        >
+          🔄 未完成
+        </按钮>
+        <按钮 
+          onClick={() => 设置显示完成(true)}
+          className={显示完成 ? "btn-primary" : "btn-secondary"}
+        >
+          ✓ 全部
+        </按钮>
+      </行>
+      
+      {/* 任务列表 */}
+      <列 className="task-list">
+        {显示的任务.map(任务 => (
+          <卡片key={任务.编号} className="task-item">
+            <行 对齐="space-between">
+              <行 间距="12px">
+                <input
+                  type="checkbox"
+                  checked={任务.完成}
+                  onChange={() => 完成任务(任务.编号)}
+                  className="task-checkbox"
+                />
+                <span 
+                  className={任务.完成 ? "task-title completed" : "task-title"}
+                >
+                  {任务.标题}
+                </span>
+              </行>
+              
+              <行 间距="8px">
+                <按钮 
+                  onClick={() => 设置编辑中(任务)}
+                  className="btn-small"
+                >
+                  ✏️ 编辑
+                </按钮>
+                <按钮 
+                  onClick={() => 删除任务(任务.编号)}
+                  className="btn-small btn-danger"
+                >
+                  🗑️ 删除
+                </按钮>
+              </行>
+            </行>
+          </卡片>
+        ))}
+      </列>
+      
+      {/* 空状态 */}
+      {显示的任务.length === 0 && (
+        <警告 类型="info">
+          📭 暂无任务，输入新任务开始吧！
+        </警告>
+      )}
+      
+      {/* 编辑模态框 */}
+      <模态框 
+        打开={编辑中的 !== null}
+        关闭={() => 设置编辑中(null)}
+        标题="编辑任务"
+      >
+        {编辑中的 && (
+          <列 间距="12px">
+            <输入框 
+              值={编辑中的.标题}
+              占位符="任务标题"
+            />
+            <行 间距="8px">
+              <按钮 className="btn-primary" onClick={() => 设置编辑中(null)}>
+                保存
+              </按钮>
+              <按钮 className="btn-secondary" onClick={() => 设置编辑中(null)}>
+                取消
+              </按钮>
+            </行>
+          </列>
+        )}
+      </模态框>
+    </容器>
+  );
+}
+
+// 导出应用
+导出 默认 待办应用;

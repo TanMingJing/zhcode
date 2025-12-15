@@ -1,5 +1,5 @@
 /**
- * WenCode Transpiler
+ * ZhCode Transpiler
  * Converts AST to JavaScript code
  * Supports both Chinese and English punctuation marks
  */
@@ -57,13 +57,35 @@ export class Transpiler {
   private transpileVariableDeclaration(decl: AST.VariableDeclaration): string {
     const declarations = decl.declarations
       .map((d) => {
-        const id = this.transpileIdentifier(d.id as AST.Identifier);
+        let id: string;
+        
+        // Handle both Identifier and ArrayPattern
+        if ((d.id as any).type === 'ArrayPattern') {
+          id = this.transpileArrayPattern(d.id as any);
+        } else {
+          id = this.transpileIdentifier(d.id as AST.Identifier);
+        }
+        
         const init = d.init ? ` = ${this.transpileExpression(d.init)}` : '';
         return `${id}${init}`;
       })
       .join(', ');
 
     return `${this.indent()}${decl.kind} ${declarations};`;
+  }
+
+  /**
+   * Transpile array destructuring pattern: [a, b, c]
+   */
+  private transpileArrayPattern(pattern: any): string {
+    const elements = pattern.elements
+      .map((el: any) => {
+        if (el === null) return ''; // hole in pattern
+        return this.transpileIdentifier(el);
+      })
+      .join(', ');
+    
+    return `[${elements}]`;
   }
 
   /**
@@ -207,6 +229,10 @@ export class Transpiler {
         return this.transpileArrayExpression(expr as AST.ArrayExpression);
       case 'ObjectExpression':
         return this.transpileObjectExpression(expr as AST.ObjectExpression);
+      case 'JSXElement':
+        return this.transpileJSXElement(expr as AST.JSXElement);
+      case 'JSXFragment':
+        return this.transpileJSXFragment(expr as AST.JSXFragment);
       case 'Identifier':
         return this.transpileIdentifier(expr as AST.Identifier);
       case 'Literal':
@@ -323,12 +349,88 @@ export class Transpiler {
     if (expr.value === null) {
       return 'null';
     }
-
     if (typeof expr.value === 'boolean') {
       return expr.value ? 'true' : 'false';
     }
 
     return String(expr.value);
+  }
+
+  /**
+   * Transpile JSX Element to React.createElement()
+   */
+  private transpileJSXElement(element: AST.JSXElement): string {
+    const tagName = this.transpileJSXName(element.openingElement.name);
+    const attributes = this.transpileJSXAttributes(element.openingElement.attributes);
+    const children = element.children.map(child => {
+      if ('type' in child && child.type === 'JSXText') {
+        return `"${(child as AST.JSXText).value}"`;
+      } else if ('type' in child && child.type === 'JSXElement') {
+        return this.transpileJSXElement(child as AST.JSXElement);
+      } else {
+        return this.transpileExpression(child as AST.Expression);
+      }
+    });
+
+    const childrenStr = children.length > 0 ? `, ${children.join(', ')}` : '';
+    return `React.createElement(${tagName}, ${attributes}${childrenStr})`;
+  }
+
+  /**
+   * Transpile JSX Fragment to React.Fragment
+   */
+  private transpileJSXFragment(fragment: AST.JSXFragment): string {
+    const children = fragment.children.map(child => {
+      if ('type' in child && child.type === 'JSXText') {
+        return `"${(child as AST.JSXText).value}"`;
+      } else if ('type' in child && child.type === 'JSXElement') {
+        return this.transpileJSXElement(child as AST.JSXElement);
+      } else {
+        return this.transpileExpression(child as AST.Expression);
+      }
+    });
+
+    const childrenStr = children.length > 0 ? `, ${children.join(', ')}` : '';
+    return `React.createElement(React.Fragment, null${childrenStr})`;
+  }
+
+  /**
+   * Transpile JSX element name
+   */
+  private transpileJSXName(name: AST.JSXIdentifier | AST.JSXMemberExpression): string {
+    if (name.type === 'JSXIdentifier') {
+      return `"${name.name}"`;
+    } else {
+      const object = this.transpileJSXName(name.object);
+      const property = name.property.name;
+      return `${object}.${property}`;
+    }
+  }
+
+  /**
+   * Transpile JSX attributes to object
+   */
+  private transpileJSXAttributes(attributes: AST.JSXAttribute[]): string {
+    if (attributes.length === 0) {
+      return 'null';
+    }
+
+    const props = attributes.map(attr => {
+      const key = attr.name.name;
+      let value = 'true'; // default value if no value specified
+
+      if (attr.value) {
+        if (attr.value.type === 'Literal') {
+          value = `"${(attr.value as AST.Literal).value}"`;
+        } else if (attr.value.type === 'JSXExpressionContainer') {
+          value = this.transpileExpression((attr.value as AST.JSXExpressionContainer).expression as AST.Expression);
+        }
+      }
+
+      return `${key}: ${value}`;
+    });
+
+    return `{ ${props.join(', ')} }`;
   }
 
   /**

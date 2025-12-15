@@ -1,5 +1,5 @@
 /**
- * Recursive Descent Parser for WenCode Language
+ * Recursive Descent Parser for ZhCode Language
  * Converts token stream into Abstract Syntax Tree (AST)
  */
 
@@ -7,7 +7,7 @@ import { Token, TokenType } from './token';
 import * as AST from './ast';
 
 /**
- * WenCode Parser - converts tokens to AST
+ * ZhCode Parser - converts tokens to AST
  */
 export class Parser {
   private tokens: Token[];
@@ -134,18 +134,26 @@ export class Parser {
   }
 
   /**
-   * Parse variable declarator (x = 10 or just x)
+   * Parse variable declarator (x = 10 or just x or [a, b] = value)
    */
   private parseVariableDeclarator(): AST.VariableDeclarator {
-    const nameToken = this.eat(TokenType.IDENTIFIER);
-    const id: AST.Identifier = {
-      type: 'Identifier',
-      name: nameToken.value,
-      line: nameToken.line,
-      column: nameToken.column,
-      start: nameToken.start,
-      end: nameToken.end,
-    };
+    const startToken = this.peek();
+    let id: AST.Identifier | AST.ArrayPattern;
+
+    // Check for array destructuring [a, b] = value
+    if (this.check(TokenType.LBRACKET)) {
+      id = this.parseArrayPattern();
+    } else {
+      const nameToken = this.eat(TokenType.IDENTIFIER);
+      id = {
+        type: 'Identifier',
+        name: nameToken.value,
+        line: nameToken.line,
+        column: nameToken.column,
+        start: nameToken.start,
+        end: nameToken.end,
+      };
+    }
 
     let init: AST.Expression | null = null;
 
@@ -157,10 +165,50 @@ export class Parser {
       type: 'VariableDeclarator',
       id,
       init,
-      line: nameToken.line,
-      column: nameToken.column,
-      start: nameToken.start,
-      end: init ? init.end : nameToken.end,
+      line: startToken.line,
+      column: startToken.column,
+      start: startToken.start,
+      end: init ? init.end : this.previous().end,
+    };
+  }
+
+  /**
+   * Parse array destructuring pattern: [a, b, c]
+   */
+  private parseArrayPattern(): AST.ArrayPattern {
+    const startToken = this.eat(TokenType.LBRACKET);
+    const elements: (AST.Identifier | null)[] = [];
+
+    while (!this.check(TokenType.RBRACKET) && !this.isAtEnd()) {
+      if (this.check(TokenType.COMMA)) {
+        elements.push(null); // holes in array pattern
+        this.advance();
+      } else {
+        const nameToken = this.eat(TokenType.IDENTIFIER);
+        elements.push({
+          type: 'Identifier',
+          name: nameToken.value,
+          line: nameToken.line,
+          column: nameToken.column,
+          start: nameToken.start,
+          end: nameToken.end,
+        });
+        
+        if (!this.check(TokenType.RBRACKET)) {
+          this.eat(TokenType.COMMA);
+        }
+      }
+    }
+
+    this.eat(TokenType.RBRACKET);
+
+    return {
+      type: 'ArrayPattern',
+      elements,
+      line: startToken.line,
+      column: startToken.column,
+      start: startToken.start,
+      end: this.previous().end,
     };
   }
 
@@ -338,11 +386,14 @@ export class Parser {
     const returnToken = this.previous();
     let argument: AST.Expression | null = null;
 
-    if (!this.check(TokenType.SEMICOLON) && !this.isAtEnd()) {
+    if (!this.check(TokenType.SEMICOLON) && !this.check(TokenType.RBRACE) && !this.isAtEnd()) {
       argument = this.parseExpression();
     }
 
-    this.eat(TokenType.SEMICOLON);
+    // Semicolon is optional if followed by closing brace or EOF
+    if (this.check(TokenType.SEMICOLON)) {
+      this.eat(TokenType.SEMICOLON);
+    }
 
     return {
       type: 'ReturnStatement',
@@ -1001,6 +1052,15 @@ export class Parser {
       return expr;
     }
 
+    // JSX Element: <Component>...</Component> or <>...</>
+    if (this.check(TokenType.LESS_THAN)) {
+      const next = this.peekAhead(1);
+      // Check if it's JSX (< followed by identifier or >)
+      if (next && (next.type === TokenType.IDENTIFIER || next.type === TokenType.GREATER_THAN)) {
+        return this.parseJSXElement();
+      }
+    }
+
     // Arrow function: x => x * 2
     // TODO: Implement arrow function parsing
 
@@ -1089,6 +1149,267 @@ export class Parser {
     return new Error(
       `Parse Error at line ${current.line}, column ${current.column}: ${message}`
     );
+  }
+
+  /**
+   * Parse JSX element or fragment
+   * <Component prop="value">children</Component>
+   * <> children </>
+   */
+  parseJSXElement(): AST.Expression {
+    const startToken = this.peek();
+
+    // JSX Fragment <>...</>
+    if (this.check(TokenType.LESS_THAN)) {
+      const next = this.peekAhead(1);
+      if (next?.type === TokenType.GREATER_THAN) {
+        this.advance(); // consume <
+        this.advance(); // consume >
+        
+        const children = this.parseJSXChildren();
+        
+        this.eat(TokenType.JSX_SLASH);
+        this.eat(TokenType.GREATER_THAN);
+
+        return {
+          type: 'JSXFragment',
+          children,
+          line: startToken.line,
+          column: startToken.column,
+          start: startToken.start,
+          end: this.previous().end,
+        };
+      }
+    }
+
+    // JSX Element <Component...>...</Component>
+    const openingElement = this.parseJSXOpeningElement();
+
+    if (openingElement.selfClosing) {
+      return {
+        type: 'JSXElement',
+        openingElement,
+        closingElement: null,
+        children: [],
+        line: startToken.line,
+        column: startToken.column,
+        start: startToken.start,
+        end: this.previous().end,
+      };
+    }
+
+    const children = this.parseJSXChildren();
+    const closingElement = this.parseJSXClosingElement();
+
+    return {
+      type: 'JSXElement',
+      openingElement,
+      closingElement,
+      children,
+      line: startToken.line,
+      column: startToken.column,
+      start: startToken.start,
+      end: this.previous().end,
+    };
+  }
+
+  /**
+   * Parse JSX opening element: <Component prop="value">
+   */
+  parseJSXOpeningElement(): AST.JSXOpeningElement {
+    const startToken = this.eat(TokenType.LESS_THAN);
+    const name = this.parseJSXName();
+
+    const attributes: AST.JSXAttribute[] = [];
+    while (this.check(TokenType.IDENTIFIER) && !this.checkJSXEnd()) {
+      attributes.push(this.parseJSXAttribute());
+    }
+
+    let selfClosing = false;
+    if (this.match(TokenType.JSX_SELF_CLOSING)) {
+      selfClosing = true;
+    } else {
+      this.eat(TokenType.GREATER_THAN);
+    }
+
+    return {
+      type: 'JSXOpeningElement',
+      name,
+      attributes,
+      selfClosing,
+      line: startToken.line,
+      column: startToken.column,
+      start: startToken.start,
+      end: this.previous().end,
+    };
+  }
+
+  /**
+   * Parse JSX closing element: </Component>
+   */
+  parseJSXClosingElement(): AST.JSXClosingElement {
+    const startToken = this.eat(TokenType.JSX_SLASH);
+    const name = this.parseJSXName();
+    this.eat(TokenType.GREATER_THAN);
+
+    return {
+      type: 'JSXClosingElement',
+      name,
+      line: startToken.line,
+      column: startToken.column,
+      start: startToken.start,
+      end: this.previous().end,
+    };
+  }
+
+  /**
+   * Parse JSX element name: Component or Module.Component
+   */
+  parseJSXName(): AST.JSXIdentifier | AST.JSXMemberExpression {
+    const startToken = this.eat(TokenType.IDENTIFIER);
+    let name: AST.JSXIdentifier | AST.JSXMemberExpression = {
+      type: 'JSXIdentifier',
+      name: startToken.value,
+      line: startToken.line,
+      column: startToken.column,
+      start: startToken.start,
+      end: startToken.end,
+    };
+
+    while (this.match(TokenType.DOT)) {
+      const property = this.eat(TokenType.IDENTIFIER);
+      name = {
+        type: 'JSXMemberExpression',
+        object: name,
+        property: {
+          type: 'JSXIdentifier',
+          name: property.value,
+          line: property.line,
+          column: property.column,
+          start: property.start,
+          end: property.end,
+        },
+        line: name.line,
+        column: name.column,
+        start: name.start,
+        end: property.end,
+      };
+    }
+
+    return name;
+  }
+
+  /**
+   * Parse JSX attribute: prop="value" or prop={expression}
+   */
+  parseJSXAttribute(): AST.JSXAttribute {
+    const startToken = this.eat(TokenType.IDENTIFIER);
+    const nameIdent: AST.JSXIdentifier = {
+      type: 'JSXIdentifier',
+      name: startToken.value,
+      line: startToken.line,
+      column: startToken.column,
+      start: startToken.start,
+      end: startToken.end,
+    };
+
+    let value: AST.JSXAttributeValue | null = null;
+
+    if (this.match(TokenType.ASSIGN)) {
+      if (this.match(TokenType.STRING)) {
+        const valueToken = this.previous();
+        value = {
+          type: 'Literal',
+          value: valueToken.value,
+          raw: valueToken.value,
+          line: valueToken.line,
+          column: valueToken.column,
+          start: valueToken.start,
+          end: valueToken.end,
+        };
+      } else if (this.match(TokenType.LBRACE)) {
+        const expr = this.parseExpression();
+        this.eat(TokenType.RBRACE);
+        value = {
+          type: 'JSXExpressionContainer',
+          expression: expr,
+          line: this.peek().line,
+          column: this.peek().column,
+          start: this.peek().start,
+          end: this.peek().end,
+        };
+      }
+    }
+
+    return {
+      type: 'JSXAttribute',
+      name: nameIdent,
+      value,
+      line: startToken.line,
+      column: startToken.column,
+      start: startToken.start,
+      end: this.previous().end,
+    };
+  }
+
+  /**
+   * Parse JSX children
+   */
+  parseJSXChildren(): (AST.JSXElement | AST.JSXText | AST.Expression)[] {
+    const children: (AST.JSXElement | AST.JSXText | AST.Expression)[] = [];
+
+    while (!this.checkJSXClosingTag()) {
+      if (this.check(TokenType.LESS_THAN)) {
+        if (this.peekAhead(1)?.type === TokenType.JSX_SLASH) {
+          break;
+        }
+        children.push(this.parseJSXElement());
+      } else if (this.check(TokenType.LBRACE)) {
+        this.advance();
+        const expr = this.parseExpression();
+        this.eat(TokenType.RBRACE);
+        children.push(expr);
+      } else if (this.check(TokenType.IDENTIFIER) || this.check(TokenType.STRING)) {
+        const textToken = this.advance();
+        children.push({
+          type: 'JSXText',
+          value: textToken.value,
+          line: textToken.line,
+          column: textToken.column,
+          start: textToken.start,
+          end: textToken.end,
+        });
+      } else {
+        this.advance();
+      }
+    }
+
+    return children;
+  }
+
+  /**
+   * Check if next token is JSX closing tag </
+   */
+  checkJSXClosingTag(): boolean {
+    return this.check(TokenType.JSX_SLASH);
+  }
+
+  /**
+   * Check if we're at end of JSX tag (> or />)
+   */
+  checkJSXEnd(): boolean {
+    return this.check(TokenType.GREATER_THAN) || this.check(TokenType.JSX_SELF_CLOSING);
+  }
+
+  /**
+   * Peek ahead one token
+   */
+  peekAhead(offset: number = 1): Token | null {
+    const index = this.current + offset;
+    if (index < this.tokens.length) {
+      return this.tokens[index];
+    }
+    return null;
   }
 }
 

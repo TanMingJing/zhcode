@@ -201,7 +201,8 @@ export class REPL {
   executeSync(code: string): unknown {
     this.tokenizer = new Tokenizer(code);
     const tokens = this.tokenizer.tokenize();
-    const ast = this.parser.parse(tokens);
+    const parser = new Parser(tokens);
+    const ast = parser.parse();
     const jsCode = this.transpiler.transpile(ast);
     return this.evaluateCode(jsCode);
   }

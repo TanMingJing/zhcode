@@ -1,5 +1,5 @@
 /**
- * Tokenizer / Lexer for WenCode Language
+ * Tokenizer / Lexer for ZhCode Language
  * Converts source code into a stream of tokens
  */
 
@@ -394,6 +394,13 @@ export class Tokenizer {
       this.advance();
       this.advance();
       return new Token(TokenType.JSX_SLASH, '</', startLine, startColumn, startPos, this.position);
+    }
+
+    // JSX self-closing tag
+    if (char === '/' && nextChar === '>') {
+      this.advance();
+      this.advance();
+      return new Token(TokenType.JSX_SELF_CLOSING, '/>', startLine, startColumn, startPos, this.position);
     }
 
     // Two-character operators

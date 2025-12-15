@@ -1,10 +1,10 @@
 {
-  "name": "@wencode/cli",
+  "name": "@zhcode/cli",
   "version": "0.1.0",
-  "description": "WenCode command-line interface",
+  "description": "ZhCode command-line interface",
   "main": "dist/index.js",
   "bin": {
-    "wencode": "dist/cli.js"
+    "zhcode": "dist/cli.js"
   },
   "scripts": {
     "dev": "tsup src/cli.ts --watch",
@@ -15,10 +15,10 @@
   },
   "files": ["dist"],
   "keywords": ["cli", "compiler", "chinese"],
-  "author": "WenCode Team",
+  "author": "ZhCode Team",
   "license": "MIT",
   "dependencies": {
-    "@wencode/core": "^0.1.0"
+    "@zhcode/core": "^0.1.0"
   },
   "devDependencies": {
     "tsup": "^8.0.0"

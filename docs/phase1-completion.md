@@ -12,7 +12,7 @@
 | 1.4 代码转译（Transpiler） | ✅ | 32 个集成测试通过，1000+ 行代码 |
 | 1.5 REPL 与测试框架 | ✅ | 105 个单元测试，100% 通过率 |
 | 1.6 开发工具基础设施 | ✅ | Monorepo、TypeScript、ESLint、Git |
-| 1.7 CLI 工具 | ✅ | wencode 命令行工具，支持 repl/run/compile |
+| 1.7 CLI 工具 | ✅ | zhcode 命令行工具，支持 repl/run/compile |
 
 ---
 
@@ -125,24 +125,24 @@
 
 ### 启动 REPL（交互环境）
 ```bash
-wencode repl
+zhcode repl
 # 或直接
-wencode
+zhcode
 ```
 
 ### 运行程序
 ```bash
-wencode run program.wen
+zhcode run program.zhc
 ```
 
 ### 编译程序
 ```bash
-wencode compile program.wen
+zhcode compile program.zhc
 ```
 
 ### 显示帮助
 ```bash
-wencode help
+zhcode help
 ```
 
 ---
@@ -150,7 +150,7 @@ wencode help
 ## 📚 项目文件结构
 
 ```
-wencode/
+zhcode/
 ├── packages/core/
 │   ├── src/
 │   │   ├── token.ts           # Token 定义
@@ -165,7 +165,7 @@ wencode/
 │   │   ├── parser.test.ts     # 语法测试（48 个）
 │   │   └── integration.test.ts# 集成测试（32 个）
 │   ├── bin/
-│   │   └── wencode.ts         # CLI 工具入口
+│   │   └── zhcode.ts         # CLI 工具入口
 │   └── package.json           # npm 包配置
 ├── docs/
 │   ├── context.md             # 项目上下文
@@ -260,4 +260,4 @@ wencode/
 
 ---
 
-**华语代码语言（WenCode）- 中文编程的新时代！** 🌟
+**华语代码语言（zhcode）- 中文编程的新时代！** 🌟

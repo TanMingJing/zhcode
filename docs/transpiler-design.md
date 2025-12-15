@@ -1,4 +1,4 @@
-# WenCode 转译器设计文档 (Phase 1.4)
+# ZhCode 转译器设计文档 (Phase 1.4)
 
 ## 目录
 1. [概述](#概述)
@@ -14,7 +14,7 @@
 
 ## 概述
 
-转译器（Transpiler）将 WenCode 的抽象语法树（AST）转换为可执行的 JavaScript 代码。这是 WenCode 实现"一次编写，到处运行"的关键组件。
+转译器（Transpiler）将 ZhCode 的抽象语法树（AST）转换为可执行的 JavaScript 代码。这是 ZhCode 实现"一次编写，到处运行"的关键组件。
 
 **核心目标：**
 - 将所有26种 AST 节点类型转换为对应的 JavaScript
@@ -27,7 +27,7 @@
 ## 设计原则
 
 ### 1. 关键字映射（一对一替换）
-| WenCode | JavaScript | 用途 |
+| ZhCode | JavaScript | 用途 |
 |---------|-----------|------|
 | `令` | `let` | 变量声明 |
 | `常量` | `const` | 常量声明 |
@@ -43,7 +43,7 @@
 | `导出` | `export` | 模块导出 |
 
 ### 2. 运算符映射（保持一致）
-| WenCode | JavaScript | 说明 |
+| ZhCode | JavaScript | 说明 |
 |---------|-----------|------|
 | `+` | `+` | 加法 |
 | `-` | `-` | 减法 |
@@ -182,7 +182,7 @@ export class Transpiler {
 ### 转译流程
 
 ```
-WenCode Source Code
+ZhCode Source Code
         ↓
   Tokenizer (tokenize)
         ↓
@@ -398,7 +398,7 @@ x > 0 ? 1 : -1 → x > 0 ? 1 : -1
 
 ### 示例 1：简单变量和函数
 
-**WenCode 代码：**
+**ZhCode 代码：**
 ```javascript
 令 x = 10;
 令 y = 20;
@@ -426,7 +426,7 @@ console.log(result);
 
 ### 示例 2：控制流
 
-**WenCode 代码：**
+**ZhCode 代码：**
 ```javascript
 函数 fibonacci(n) {
   如果 (n <= 1) {
@@ -450,7 +450,7 @@ function fibonacci(n) {
 
 ### 示例 3：循环和数组
 
-**WenCode 代码：**
+**ZhCode 代码：**
 ```javascript
 令 nums = [1, 2, 3, 4, 5];
 令 sum = 0;
@@ -476,7 +476,7 @@ console.log(sum);
 
 ### 示例 4：对象和成员访问
 
-**WenCode 代码：**
+**ZhCode 代码：**
 ```javascript
 令 person = {
   名字: "张三",
