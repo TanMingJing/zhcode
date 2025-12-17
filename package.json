@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "description": "A modern programming language with Chinese keywords, AI-driven development, and React compatibility.",
   "private": true,
-  "packageManager": "pnpm@8.0.0",
+  "packageManager": "pnpm@10.6.0",
   "bin": {
     "zhcode": "./zhcode.js"
   },

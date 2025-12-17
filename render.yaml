@@ -5,7 +5,7 @@ services:
     runtime: node
     plan: free
     startCommand: pnpm start
-    buildCommand: npm install -g pnpm@9.0.6 && pnpm install --no-frozen-lockfile && pnpm build
+    buildCommand: npm install -g pnpm@10.6.0 && corepack enable && pnpm install --no-frozen-lockfile && pnpm -r build
     envVars:
       - key: NODE_VERSION
         value: '20'
@@ -16,7 +16,7 @@ services:
     runtime: node
     plan: free
     startCommand: pnpm preview
-    buildCommand: npm install -g pnpm@9.0.6 && pnpm install --no-frozen-lockfile && pnpm build
+    buildCommand: npm install -g pnpm@10.6.0 && corepack enable && pnpm install --no-frozen-lockfile && pnpm -r build
     envVars:
       - key: NODE_VERSION
         value: '20'
