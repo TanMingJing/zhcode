@@ -1,0 +1,112 @@
+{
+  "name": "ai_operations",
+  "permissions": [],
+  "attributes": [
+    {
+      "key": "userId",
+      "type": "string",
+      "status": "available",
+      "required": true,
+      "array": false,
+      "size": 255
+    },
+    {
+      "key": "actionType",
+      "type": "string",
+      "status": "available",
+      "required": true,
+      "array": false,
+      "size": 50,
+      "default": "generate"
+    },
+    {
+      "key": "input",
+      "type": "string",
+      "status": "available",
+      "required": true,
+      "array": false,
+      "size": 10000
+    },
+    {
+      "key": "output",
+      "type": "string",
+      "status": "available",
+      "required": true,
+      "array": false,
+      "size": 10000
+    },
+    {
+      "key": "language",
+      "type": "string",
+      "status": "available",
+      "required": true,
+      "array": false,
+      "size": 10,
+      "default": "zh"
+    },
+    {
+      "key": "framework",
+      "type": "string",
+      "status": "available",
+      "required": true,
+      "array": false,
+      "size": 50,
+      "default": "zhcode"
+    },
+    {
+      "key": "status",
+      "type": "string",
+      "status": "available",
+      "required": true,
+      "array": false,
+      "size": 20,
+      "default": "success"
+    },
+    {
+      "key": "errorMessage",
+      "type": "string",
+      "status": "available",
+      "required": false,
+      "array": false,
+      "size": 5000
+    },
+    {
+      "key": "code",
+      "type": "string",
+      "status": "available",
+      "required": false,
+      "array": false,
+      "size": 10000
+    },
+    {
+      "key": "fileId",
+      "type": "string",
+      "status": "available",
+      "required": false,
+      "array": false,
+      "size": 255
+    },
+    {
+      "key": "timestamp",
+      "type": "datetime",
+      "status": "available",
+      "required": true,
+      "array": false,
+      "default": "now"
+    }
+  ],
+  "indexes": [
+    {
+      "key": "idx_userId",
+      "type": "key",
+      "attributes": ["userId"],
+      "orders": ["ASC"]
+    },
+    {
+      "key": "idx_timestamp",
+      "type": "key",
+      "attributes": ["timestamp"],
+      "orders": ["DESC"]
+    }
+  ]
+}

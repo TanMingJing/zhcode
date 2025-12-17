@@ -1,0 +1,493 @@
+# 华语代码语言 - 项目开发计划与检查清单
+
+## 概述
+本检查清单基于 [context.md](context.md) 文档，按四个开发阶段（Phase 1-4）组织，包含语言设计、技术架构、AI 集成及文档等核心任务。
+
+---
+
+## Phase 1：核心语言原型
+
+### 1.1 语言设计与关键字定义
+- [x] 完成中文关键字完整列表（function → 函数、return → 返回等）
+- [x] 定义所有运算符与符号映射规则
+- [x] 编写语法规范文档（BNF/EBNF 格式）
+- [x] 设计保留字与标识符规则
+- [x] 确定错误消息与异常处理策略
+- [ ] **新增**: 定义中文运算符与符号名称
+  - [ ] 等于 = `"="`
+  - [ ] 加 = `"+"`
+  - [ ] 减 = `"-"`
+  - [ ] 乘 = `"*"`
+  - [ ] 除 = `"/"`
+  - [ ] 模 = `"%"`
+  - [ ] 大于 = `">"`
+  - [ ] 小于 = `"<"`
+  - [ ] 大于等于 = `">="`
+  - [ ] 小于等于 = `"<="`
+  - [ ] 不等于 = `"!="`
+  - [ ] 和 = `"&&"`
+  - [ ] 或 = `"||"`
+  - [ ] 非 = `"!"`
+  - [ ] 点 = `"."`
+  - [ ] 冒号 = `":"`
+  - [ ] 分号 = `";"`
+  - [ ] 逗号 = `","`
+  - [ ] 左括号 = `"("`
+  - [ ] 右括号 = `")"`
+  - [ ] 左花括号 = `"{"`
+  - [ ] 右花括号 = `"}"`
+  - [ ] 左方括号 = `"["`
+  - [ ] 右方括号 = `"]"`
+
+### 1.2 Tokenizer（词法分析器）
+- [x] 实现中文关键字识别模块
+- [x] 实现符号识别（括号、逗号、运算符等）
+- [x] 支持注释处理（中文注释）
+- [x] 支持字符串与模板字符串解析
+- [x] 实现 Token 流生成器
+- [x] 编写 30+ 单元测试
+
+### 1.3 Parser（语法分析器）
+- [x] 设计 AST 结构（基于 JavaScript AST 扩展）
+  - [x] 26 AST node types with full type safety
+  - [x] Comprehensive documentation in docs/ast-design.md
+- [x] 实现递归下降解析器或使用 PEG/Chevrotain
+  - [x] Recursive descent parser with 11 precedence levels
+  - [x] Full expression parsing (binary, unary, ternary, calls, member access)
+  - [x] 650+ lines of well-documented parser code
+- [x] 支持表达式解析（二元/一元/三元运算）
+  - [x] All arithmetic, logical, comparison, and assignment operators
+  - [x] Member access and function calls
+  - [x] Arrow functions and conditionals
+- [x] 支持声明语句解析（变量、函数、类等）
+  - [x] Variable declarations (令/常量)
+  - [x] Function declarations with parameters
+  - [x] Block statements
+- [x] 支持控制流解析（if/else、for、while）
+  - [x] If/else statements with proper nesting
+  - [x] For loops with initialization, condition, update
+  - [x] While loops
+  - [x] Break and continue statements
+- [x] 错误恢复与诊断机制
+  - [x] Detailed error messages with line/column info
+  - [x] Graceful error handling
+- [x] 完整单元测试覆盖（73/73 tests passing, 100%）
+  - [x] 47 parser test cases covering all features
+  - [x] Tokenizer tests (24 tests)
+  - [x] Integration tests
+
+### 1.4 Transpiler（转译器）
+- [x] 实现 AST 到 JavaScript 的代码生成
+  - [x] 完整 transpiler.ts 实现（1000+ 行）
+  - [x] 20+ 转译方法覆盖所有 AST 节点类型
+  - [x] 支持变量声明转译（令 → let/const）
+  - [x] 支持函数声明转译（函数 → function）
+  - [x] 支持控制流转译（如果/对于/属于 → if/for/while）
+  - [x] 支持表达式转译（二元、一元、三元、调用等）
+  - [x] 生成可读的 JavaScript 代码（带缩进和注释）
+  - [x] 双语标点符号支持（中文和英文标点自动转换）
+  - [x] 完整集成测试覆盖（32 个测试案例）
+  - [x] 测试结果：105/105 通过（100% 通过率）
+- [x] 支持中英文混用标点符号
+  - [x] 规范化函数处理中文标点到英文等价符号
+  - [x] 支持的符号对：。→ . ； → ; ， → , ： → : （） → () 【】 → [] ｛｝ → {}
+- [x] 代码格式化与缩进
+  - [x] 2 空格缩进标准
+  - [x] 正确的操作符间距
+  - [x] 函数与控制流的正确格式
+
+### 1.5 运行环境与测试
+- [x] 搭建 Node.js 测试环境
+  - [x] Vitest 测试框架配置完成
+  - [x] 105 个单元测试全部通过（100% 通过率）
+- [x] 实现基础 REPL（命令行交互环境）
+  - [x] 接受用户输入的中文代码
+  - [x] 实时编译和执行（完整流程：Tokenizer → Parser → Transpiler → Executor）
+  - [x] 显示执行结果或错误信息
+  - [x] 支持特殊命令（帮助、退出、清空）
+  - [x] REPL 类实现完整，支持交互式和同步执行
+- [x] 编写单元测试框架（Vitest/Jest）
+  - [x] 已配置 Vitest（在根 package.json）
+  - [x] 24 个 Tokenizer 测试（通过）
+  - [x] 48 个 Parser 测试（通过）
+  - [x] 32 个集成测试（通过）
+  - [x] 1 个索引导出测试（通过）
+  - [x] **总计：105/105 测试通过（100% 通过率）**
+- [x] 创建测试用例集（语法、关键字、编译流程）
+  - [x] 全面覆盖语法特性
+  - [x] 中文标点符号测试
+  - [x] 端到端编译流程测试
+- [x] 建立 CI/CD 流程（GitHub Actions）
+  - [x] 已配置 lint 和 test 作业
+  - [x] 所有检查通过
+  - [x] pnpm-lock.yaml 已提交
+  - [x] master 和 main 分支同步
+
+### 1.6 开发工具与基础设施
+- [x] 初始化 Monorepo 项目结构（使用 pnpm workspaces）
+  - [x] pnpm-workspace.yaml 已配置
+  - [x] 根 package.json 配置完成
+  - [x] pnpm-lock.yaml 已提交
+- [x] 配置 TypeScript 与 ESLint
+  - [x] tsconfig.json 配置完成
+  - [x] ESLint 规则配置完成
+  - [x] 0 个 TypeScript 错误
+  - [x] 0 个 ESLint 错误
+- [x] 设置 Prettier 代码格式化
+  - [x] .prettierrc 已配置
+- [x] 建立版本管理（Git + GitHub）
+  - [x] GitHub 仓库 HackerTMJ/zhcode 已创建
+  - [x] master 和 main 分支已同步
+  - [x] 所有更改已提交
+- [x] 配置包发布流程（npm）
+  - [x] @zhcode/core 包结构已配置
+  - [x] package.json 已配置
+
+### 1.7 CLI 工具与可执行程序
+- [x] 创建 CLI 工具（zhcode）
+  - [x] bin/zhcode.ts 入口文件完成
+  - [x] 支持 repl 命令（启动交互环境）
+  - [x] 支持 run 命令（执行 .zhc 文件）
+  - [x] 支持 compile 命令（编译成 JavaScript）
+  - [x] 支持 help 命令（显示帮助信息）
+  - [x] 支持 version 命令（显示版本号）
+- [x] 集成完整编译流程
+  - [x] Tokenizer → Parser → Transpiler → Executor
+  - [x] 错误处理与展示
+  - [x] 支持中英文混用
+
+---
+
+## Phase 2：React 兼容 & 工具链
+
+### 2.1 JSX 支持
+- [x] 扩展 Tokenizer 以识别 JSX 标签语法
+  - [x] 识别 < 和 > 作为 JSX 标签开闭
+  - [x] 识别 /> 自闭合标签 (JSX_SELF_CLOSING 令牌)
+  - [x] 识别 </ 关闭标签 (JSX_SLASH 令牌)
+- [x] 实现 JSX 到 JavaScript 的转译（使用自定义转译器）
+  - [x] parseJSX() 和 parseJSXElement() 在 Parser 中实现
+  - [x] transpileJSXElement() 在 Transpiler 中实现
+  - [x] 转译为 React.createElement() 调用
+- [x] 支持属性解析与表达式插值
+  - [x] 属性映射为 props 对象
+  - [x] {expr} 表达式容器支持
+  - [x] 正确处理自闭合标签（无空children）
+- [x] 支持嵌套 JSX 元素
+  - [x] 多个 children 正确合并
+  - [x] 深层嵌套结构支持
+- [x] 11 个 JSX 集成测试用例
+  - [x] 简单元素、自闭合标签、多属性
+  - [x] 嵌套元素、表达式容器、中文文本
+  - [x] className、布尔属性、多个 children
+- [x] 支持 JSX Fragment（`<></>`）- Parser 与 Transpiler 完整实现
+- [x] 支持条件渲染（三元运算符）
+- [ ] 支持列表渲染与 .map()（待箭头函数完整支持）
+- [ ] 支持中文标签名（如 `<按钮>` → `<Button>`）
+- [ ] 支持 Children 属性处理
+
+### 2.2 React 组件语法
+- [x] 定义组件声明关键字（组件 → function Component）
+- [x] 支持 Props 参数传递 (通过普通函数参数)
+- [x] 支持 Hooks（useState、useEffect 等）
+  - [x] Array destructuring 支持 `[state, setState] = ...`
+  - [x] React.useState() 调用支持
+  - [x] React.useEffect() 调用支持
+  - [x] 10 个 hooks 集成测试
+- [ ] 支持条件渲染与列表渲染
+- [ ] 文档示例：创建一个中文组件
+
+### 2.3 NPM 集成 & 打包
+- [ ] 配置 Babel/esbuild 作为编译后端
+- [ ] 支持 ES Module 与 CommonJS 输出格式
+- [ ] 实现 package.json 自动生成工具
+- [ ] 支持外部依赖导入（npm 包）
+- [ ] 测试与第三方库（React、lodash 等）的兼容性
+- [ ] 发布 npm 包（@zhcode/core 或类似）
+
+### 2.4 Web IDE 原型
+- [x] 使用 React + Vite 搭建前端框架
+- [x] 集成 Monaco Editor
+- [x] 实现编辑器 UI 布局（侧边栏、编辑区、输出区）
+- [x] 实现文件树导航与文件管理
+- [x] 实现实时编译（监听代码变化，500ms 去抖）
+- [x] 实现代码执行（JavaScript eval，console.log 捕获）
+- [x] 支持 4 个代码示例（数组操作、递归、计算器、基础）
+- [x] 支持 JavaScript 代码导出与下载
+- [ ] 支持代码主题切换（暗色主题完成）
+- [x] 支持在线保存/同步
+
+### 2.7 编辑器增强功能（NEW）
+- [x] 撤销/重做功能
+  - [x] 实现每文件独立的 Undo/Redo 栈
+  - [x] Ctrl+Z / Ctrl+Y 快捷键
+  - [x] 重置文件到原始状态
+  - [x] 撤销/重做按钮的启用/禁用状态管理
+- [x] 代码导出功能
+  - [x] ZhCode 转 JavaScript 转译
+  - [x] 整个项目导出为 JSON
+  - [x] 浏览器文件下载功能
+- [x] 云端项目同步（GitHub Repo 风格）
+  - [x] 项目保存到 Appwrite 云端
+  - [x] 项目加载从云端恢复
+  - [x] 项目删除从云端移除
+  - [x] 项目列表显示所有用户项目
+  - [x] 项目元数据（名称、描述、创建/更新时间）
+  - [x] 多文件项目支持
+- [x] AI 操作历史记录
+  - [x] 所有 AI 操作自动记录到 Appwrite
+  - [x] 历史记录包含：操作类型、输入、输出、语言、框架、状态
+  - [x] AI 历史面板显示最近 50 条记录
+  - [x] 可查询 AI 操作统计
+
+### 2.5 CLI 工具
+- [ ] 实现编译命令（`zhcode compile file.zhc`）
+- [ ] 实现运行命令（`zhcode run file.zhc`）
+- [ ] 实现初始化命令（`zhcode init`）
+- [ ] 实现 Watch 模式（自动编译）
+- [ ] 实现帮助文档（`zhcode --help`）
+
+### 2.6 VS Code 扩展原型
+- [ ] 创建 VS Code Extension 项目结构
+- [ ] 实现语法高亮（使用 TextMate 语法定义）
+- [ ] 实现基础代码片段（Snippets）
+- [ ] 集成编译与运行功能（命令调用）
+- [ ] 可选：实现 Language Server Protocol (LSP) 基础
+
+---
+
+## Phase 3：AI 驱动开发
+
+### 3.1 AI 服务集成
+- [x] 设计 AIProvider 接口（统一 AI 调用）
+- [x] 支持 OpenAI GPT API 集成
+- [x] 支持 Azure OpenAI / 备选方案（已使用 OpenRouter）
+- [x] 实现请求/响应处理与错误降级
+- [x] 配置 API Key 管理（环境变量）
+- [x] 实现 API 调用监控与日志
+
+### 3.2 AI 自动代码生成
+- [x] 设计自然语言 → 中文代码的 Prompt 模板
+- [x] 实现代码生成端点（直接 API 调用）
+- [x] 在 Web IDE 中添加 AI 生成按钮/命令
+- [x] 支持代码片段与完整函数的生成
+- [x] 支持 React 组件生成
+- [x] 实现生成结果的代码验证（编译检查）
+- [x] 测试与优化 Prompt 准确性
+
+### 3.3 AI 自动补全（LSP + AI）
+- [ ] 实现 Language Server Protocol 基础设施
+- [ ] 集成 AI 补全模型（如 GitHub Copilot 风格）
+- [ ] 支持上下文感知的代码补全
+- [ ] 支持函数签名提示（Parameter Hints）
+- [ ] 在 IDE 中集成补全提示
+- [ ] 性能优化（缓存、增量编译）
+
+### 3.4 AI 错误解释模块
+- [x] 收集编译器错误类型与消息
+- [x] 设计错误解释 Prompt
+- [x] 实现错误分析端点（直接 API 调用）
+- [x] 在 IDE 中展示 AI 解释结果
+- [x] 支持多语言错误提示（中文/英文）
+- [x] 测试常见错误场景
+
+### 3.5 AI 代码优化器
+- [x] 设计优化需求识别（性能/可读性/规范）
+- [x] 实现代码优化端点
+- [x] 在 IDE 中集成优化建议功能
+- [x] 支持一键应用优化
+- [x] 支持自定义优化规则配置
+
+### 3.6 后端 AI 服务架构
+- [x] 搭建 Node.js 后端框架（已改用直接 API 调用）
+- [x] 实现 API 端点（生成、解释、优化、补全）
+- [x] 实现身份验证与 API Key 管理
+- [x] 配置速率限制（Rate Limiting）
+- [x] 实现日志与监控
+- [ ] 部署到云平台（Railway/Render/Fly.io）
+
+### 3.7 AI 多语言与框架检测（LATEST）
+- [x] 添加语言选择功能（中文 / English）
+- [x] 在设置中显示语言选择器
+- [x] 自动检测代码框架（ZhCode / React/TypeScript / JavaScript）
+- [x] 框架感知的 Prompt 生成
+- [x] 更新 `callAIService` 函数支持语言参数
+- [x] 更新 `handleGenerateCode` 函数支持语言
+- [x] 更新 `handleGetSuggestions` 函数支持语言
+- [x] 更新 `handleContextMenuAction` 函数支持语言（所有 4 个分支）
+- [x] 所有 AI 处理器现在支持中英文双语输出
+- [x] 所有 AI 处理器现在进行框架自动检测
+
+---
+
+## Phase 4：正式发布
+
+### 4.1 官方文档（Language Guide）
+- [ ] 4.1.1 入门指南
+  - [ ] 安装编译器/IDE 方法
+  - [ ] 第一个程序（"你好，世界"）
+  - [ ] 基本代码结构说明
+  
+- [ ] 4.1.2 语言基本语法
+  - [ ] 变量声明（令 / 常量）
+  - [ ] 条件判断（如果 / 否则）
+  - [ ] 循环（对于 / 属于）
+  - [ ] 函数定义与调用
+  - [ ] 模块导入/导出
+  
+- [ ] 4.1.3 React.js UI 开发教程
+  - [ ] 组件声明与定义
+  - [ ] JSX 混合中文关键字
+  - [ ] 事件绑定与状态管理
+  - [ ] 常用 Hooks 使用
+  
+- [ ] 4.1.4 深入语法
+  - [ ] 数组与对象
+  - [ ] 异步编程（async/await）
+  - [ ] 错误处理（尝试/捕获）
+  - [ ] 高级类型与泛型（可选）
+  
+- [ ] 4.1.5 AI 功能操作指南
+  - [ ] AI 自动生成代码
+  - [ ] AI 自动解释错误
+  - [ ] AI 代码优化
+  - [ ] AI 生成 React 组件
+  
+- [ ] 4.1.6 IDE 使用指南
+  - [ ] 文件树、编辑器、终端
+  - [ ] 主题切换与设置
+  - [ ] 一键编译与运行
+  - [ ] 自动补全与 AI 提示
+  - [ ] 导出 JavaScript
+  
+- [ ] 4.1.7 高级技术
+  - [ ] 自定义库与模块
+  - [ ] 调用 JavaScript 模块
+  - [ ] 语言扩展与插件
+  - [ ] 性能优化技巧
+
+### 4.2 代码示例库
+- [ ] 编写 10+ 完整示例项目
+  - [ ] 计算器应用
+  - [ ] 待办事项列表（React）
+  - [ ] API 集成示例
+  - [ ] 数据处理脚本
+  - [ ] 自动化工具
+- [ ] 示例代码存储库与在线演示
+- [ ] 交互式教程（Playground）
+
+### 4.3 官方网站
+- [ ] 设计网站架构（使用 Next.js 或 Astro）
+- [ ] 首页与产品介绍
+- [ ] 在线编辑器 Playground（Web IDE 集成）
+- [ ] 文档网站（自动生成或 Docusaurus）
+- [ ] 案例展示页面
+- [ ] 下载与安装指南
+- [ ] 社区论坛/讨论版（可选）
+
+### 4.4 社区与生态
+- [ ] 发布开源仓库（GitHub）
+- [ ] 许可证选择（MIT/Apache 2.0 推荐）
+- [ ] 建立社区贡献指南（CONTRIBUTING.md）
+- [ ] 设立讨论区与 Issue 模板
+- [ ] 发布官方博客与更新日志
+- [ ] 推广与营销（社交媒体、技术论坛）
+
+### 4.5 工具链完善
+- [ ] VS Code Extension 正式版本
+- [ ] Electron 桌面 IDE（可选）
+- [ ] Webpack/Vite 集成插件
+- [ ] 构建工具链优化（编译速度）
+- [ ] 调试工具完善（断点、变量查看）
+
+### 4.6 性能与稳定性
+- [ ] 编译器性能基准测试
+- [ ] 大型项目兼容性测试
+- [ ] 内存泄漏与性能分析
+- [ ] 安全审计（代码注入、沙箱突破）
+- [ ] 负载测试（后端 AI 服务）
+
+### 4.7 发布与推广
+- [ ] 发布 v1.0.0 到 npm
+- [ ] 发布 VS Code Extension
+- [ ] 发布官方网站上线
+- [ ] 发布新闻稿与博客文章
+- [ ] 参加开发者大会/论坛
+- [ ] 建立反馈机制与路线图公开
+
+---
+
+## 可选特性与扩展
+
+### 可选语法特性
+- [ ] 组件声明进阶（`组件` 关键字的装饰器支持）
+- [ ] AI 指令语法（`@AI 生成代码: "描述"`）
+- [ ] 类型注解系统（如果需要静态类型）
+- [ ] 模式匹配与解构赋值
+- [ ] 管道运算符（Pipeline）
+
+### 可选工具与集成
+- [ ] Docker 容器化部署
+- [ ] GitHub Actions CI/CD 自动化
+- [ ] 性能分析工具集成
+- [ ] 代码质量检查（SonarQube）
+- [ ] 文档自动生成（JSDoc/TypeDoc）
+
+### 可选本地 AI 模型支持
+- [ ] ONNX Runtime 集成
+- [ ] WebGPU 加速推理
+- [ ] LLaMA / MPT 等开源模型支持
+- [ ] 离线代码补全与生成
+
+---
+
+## 跨阶段任务
+
+### 文档与知识库
+- [ ] 建立 Wiki 文档（技术设计文档）
+- [ ] 维护 Architecture Decision Records (ADR)
+- [ ] 编写 API 文档（OpenAPI/Swagger）
+- [ ] 创建常见问题解答（FAQ）
+
+### 测试与质量保证
+- [ ] 建立自动化测试框架
+- [ ] 单元测试覆盖率目标（>80%）
+- [ ] 集成测试（编译器 + IDE）
+- [ ] 用户验收测试（UAT）
+- [ ] 性能基准测试
+
+### 团队与资源
+- [ ] 招募核心开发团队（Parser、Transpiler、IDE、AI）
+- [ ] 确定项目管理工具（GitHub Projects/Jira）
+- [ ] 建立沟通渠道（Slack/Discord）
+- [ ] 制定开发规范与代码审查流程
+- [ ] 定期同步与里程碑评审
+
+---
+
+## 项目名称确定
+- [ ] 最终确定项目名称
+  - [ ] 华语代码语言（代号 HL）
+  - [ ] 中文现代脚本语言（CMScript）
+  - [ ] 中语编程（ZhongCode）
+  - [ ] 文语编程语言（WenLang）
+
+---
+
+## 时间线（参考）
+
+| 阶段 | 预计周期 | 关键里程碑 |
+|------|---------|----------|
+| Phase 1 | 8-12 周 | Tokenizer、Parser、Transpiler 完成 |
+| Phase 2 | 8-10 周 | React 兼容、Web IDE Demo、CLI 工具 |
+| Phase 3 | 6-8 周 | AI 集成、自动补全、错误解释 |
+| Phase 4 | 持续 | 文档、发布、社区建设 |
+
+**总耗时**：6-9 个月（取决于团队规模与资源）
+
+---
+
+## 说明
+
+本检查清单将持续更新，反映项目进展与优先级变化。每个阶段完成后应进行回顾与调整。
+

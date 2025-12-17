@@ -1,0 +1,25 @@
+{
+  "name": "zhcode",
+  "displayName": "ZhCode",
+  "description": "Language support and development tools for ZhCode",
+  "version": "0.1.0",
+  "publisher": "zhcode",
+  "engine": {
+    "vscode": "^1.84.0"
+  },
+  "categories": ["Programming Languages", "Formatters"],
+  "activationEvents": [
+    "onLanguage:zhcode"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "languages": [
+      {
+        "id": "zhcode",
+        "aliases": ["ZhCode", "zhcode"],
+        "extensions": [".zhc"],
+        "configuration": "./language-configuration.json"
+      }
+    ]
+  }
+}

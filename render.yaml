@@ -1,0 +1,36 @@
+services:
+  - type: web
+    name: wencode-ai-service
+    rootDir: packages/ai-service
+    runtime: node
+    plan: free
+    startCommand: pnpm start
+    buildCommand: pnpm install --no-frozen-lockfile && pnpm build
+    envVars:
+      - key: NODE_VERSION
+        value: '20'
+      - key: PNPM_HOME
+        value: /opt/render/.pnpm
+    
+  - type: web
+    name: wencode-ide
+    rootDir: packages/ide
+    runtime: node
+    plan: free
+    startCommand: pnpm preview
+    buildCommand: pnpm install --no-frozen-lockfile && pnpm build
+    envVars:
+      - key: NODE_VERSION
+        value: '20'
+      - key: VITE_API_URL
+        value: 'https://wencode-ai-service.onrender.com'
+      - key: VITE_APPWRITE_PROJECT_ID
+        value: '694124fc00267079b6cd'
+      - key: VITE_APPWRITE_DATABASE_ID
+        value: 'zhcode_db'
+      - key: VITE_APPWRITE_COLLECTION_ID
+        value: 'ai_operations'
+      - key: VITE_APPWRITE_ENDPOINT
+        value: 'https://sgp.cloud.appwrite.io/v1'
+      - key: VITE_APPWRITE_USERS_COLLECTION_ID
+        value: 'users'

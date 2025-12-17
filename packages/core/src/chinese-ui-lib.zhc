@@ -1,0 +1,329 @@
+/**
+ * 华语代码 - 中文 UI 组件库
+ * Chinese UI Component Library
+ * 
+ * 提供常用的中文命名组件，简化开发
+ */
+
+// ============================================================================
+// 基础组件
+// ============================================================================
+
+/**
+ * 按钮组件
+ */
+export 函数 按钮(属性) {
+  返回 (
+    <button 
+      className={属性.className || "btn"}
+      onClick={属性.onClick}
+      disabled={属性.禁用 || false}
+      type={属性.类型 || "button"}
+    >
+      {属性.children}
+    </button>
+  );
+}
+
+/**
+ * 输入框组件
+ */
+export 函数 输入框(属性) {
+  返回 (
+    <input
+      type={属性.类型 || "text"}
+      className={属性.className || "input"}
+      placeholder={属性.占位符 || ""}
+      value={属性.值}
+      onChange={属性.变化}
+      disabled={属性.禁用 || false}
+    />
+  );
+}
+
+/**
+ * 标签组件
+ */
+export 函数 标签(属性) {
+  返回 (
+    <label className={属性.className || "label"}>
+      {属性.children}
+    </label>
+  );
+}
+
+// ============================================================================
+// 容器组件
+// ============================================================================
+
+/**
+ * 卡片组件
+ */
+export 函数 卡片(属性) {
+  返回 (
+    <div className={属性.className || "card"}>
+      {属性.标题 && (
+        <div className="card-header">
+          <h3>{属性.标题}</h3>
+        </div>
+      )}
+      <div className="card-body">
+        {属性.children}
+      </div>
+      {属性.页脚 && (
+        <div className="card-footer">
+          {属性.页脚}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * 表单组件
+ */
+export 函数 表单(属性) {
+  返回 (
+    <form 
+      className={属性.className || "form"}
+      onSubmit={属性.提交}
+    >
+      {属性.children}
+    </form>
+  );
+}
+
+/**
+ * 容器组件
+ */
+export 函数 容器(属性) {
+  返回 (
+    <div className={属性.className || "container"}>
+      {属性.children}
+    </div>
+  );
+}
+
+// ============================================================================
+// 文本组件
+// ============================================================================
+
+/**
+ * 标题组件
+ */
+export 函数 标题(属性) {
+  令 级别 = 属性.级别 || 1;
+  令 标签 = `h${级别}`;
+  
+  返回 (
+    <{标签} className={属性.className || `heading-${级别}`}>
+      {属性.children}
+    </{标签}>
+  );
+}
+
+/**
+ * 段落组件
+ */
+export 函数 段落(属性) {
+  返回 (
+    <p className={属性.className || "paragraph"}>
+      {属性.children}
+    </p>
+  );
+}
+
+/**
+ * 链接组件
+ */
+export 函数 链接(属性) {
+  返回 (
+    <a 
+      href={属性.地址 || "#"}
+      className={属性.className || "link"}
+      target={属性.目标}
+    >
+      {属性.children}
+    </a>
+  );
+}
+
+// ============================================================================
+// 列表组件
+// ============================================================================
+
+/**
+ * 列表项组件
+ */
+export 函数 列表(属性) {
+  返回 (
+    <ul className={属性.className || "list"}>
+      {属性.项目.map((项, 索引) => (
+        <li key={索引} className="list-item">
+          {项}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/**
+ * 有序列表组件
+ */
+export 函数 有序列表(属性) {
+  返回 (
+    <ol className={属性.className || "ordered-list"}>
+      {属性.项目.map((项, 索引) => (
+        <li key={索引} className="list-item">
+          {项}
+        </li>
+      ))}
+    </ol>
+  );
+}
+
+// ============================================================================
+// 布局组件
+// ============================================================================
+
+/**
+ * 行组件 (Flexbox)
+ */
+export 函数 行(属性) {
+  令 样式 = {
+    display: "flex",
+    flexDirection: "row",
+    gap: 属性.间距 || "8px",
+    justifyContent: 属性.对齐 || "flex-start",
+    ...属性.样式
+  };
+  
+  返回 (
+    <div className={属性.className} style={样式}>
+      {属性.children}
+    </div>
+  );
+}
+
+/**
+ * 列组件 (Flexbox)
+ */
+export 函数 列(属性) {
+  令 样式 = {
+    display: "flex",
+    flexDirection: "column",
+    gap: 属性.间距 || "8px",
+    justifyContent: 属性.对齐 || "flex-start",
+    ...属性.样式
+  };
+  
+  返回 (
+    <div className={属性.className} style={样式}>
+      {属性.children}
+    </div>
+  );
+}
+
+/**
+ * 栅格组件
+ */
+export 函数 栅格(属性) {
+  令 样式 = {
+    display: "grid",
+    gridTemplateColumns: `repeat(${属性.列数 || 3}, 1fr)`,
+    gap: 属性.间距 || "16px",
+    ...属性.样式
+  };
+  
+  返回 (
+    <div className={属性.className} style={样式}>
+      {属性.children}
+    </div>
+  );
+}
+
+// ============================================================================
+// 高级组件
+// ============================================================================
+
+/**
+ * 模态框组件
+ */
+export 函数 模态框(属性) {
+  如果 (!属性.打开) {
+    返回 null;
+  }
+  
+  返回 (
+    <div className="modal-overlay" onClick={属性.关闭}>
+      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+        {属性.标题 && <h2 className="modal-title">{属性.标题}</h2>}
+        <div className="modal-body">
+          {属性.children}
+        </div>
+        {属性.页脚 && <div className="modal-footer">{属性.页脚}</div>}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * 标签页组件
+ */
+export 函数 标签页(属性) {
+  令 [活跃, 设置活跃] = React.useState(0);
+  
+  返回 (
+    <div className="tabs">
+      <div className="tab-headers">
+        {属性.标签.map((标签, 索引) => (
+          <button
+            key={索引}
+            className={`tab-header ${活跃 === 索引 ? 'active' : ''}`}
+            onClick={() => 设置活跃(索引)}
+          >
+            {标签}
+          </button>
+        ))}
+      </div>
+      <div className="tab-content">
+        {属性.children[活跃]}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * 加载动画组件
+ */
+export 函数 加载(属性) {
+  返回 (
+    <div className="loader">
+      <div className="spinner"></div>
+      {属性.文本 && <p>{属性.文本}</p>}
+    </div>
+  );
+}
+
+/**
+ * 警告提示组件
+ */
+export 函数 警告(属性) {
+  令 [显示, 设置显示] = React.useState(true);
+  
+  如果 (!显示) {
+    返回 null;
+  }
+  
+  返回 (
+    <div className={`alert alert-${属性.类型 || 'info'}`}>
+      <span>{属性.children}</span>
+      <button 
+        className="alert-close" 
+        onClick={() => 设置显示(false)}
+      >
+        ✕
+      </button>
+    </div>
+  );
+}

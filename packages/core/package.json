@@ -1,0 +1,32 @@
+{
+  "name": "@zhcode/core",
+  "version": "0.1.0",
+  "description": "ZhCode language core: Tokenizer, Parser, Transpiler",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "bin": {
+    "zhcode": "dist/bin/zhcode.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "dev": "tsup src/index.ts --watch",
+    "build": "tsup src/index.ts src/bin/zhcode.ts",
+    "test": "vitest",
+    "test:coverage": "vitest --coverage",
+    "lint": "eslint src --ext .ts",
+    "type-check": "tsc --noEmit"
+  },
+  "files": ["dist"],
+  "keywords": ["language", "parser", "tokenizer", "transpiler", "chinese"],
+  "author": "ZhCode Team",
+  "license": "MIT",
+  "devDependencies": {
+    "tsup": "^8.0.0",
+    "@vitest/coverage-v8": "^1.0.0"
+  }
+}
