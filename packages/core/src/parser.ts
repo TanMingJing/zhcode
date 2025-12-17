@@ -120,7 +120,10 @@ export class Parser {
       declarations.push(this.parseVariableDeclarator());
     }
 
-    this.eat(TokenType.SEMICOLON);
+    // Semicolon is optional if followed by closing brace or EOF
+    if (this.check(TokenType.SEMICOLON)) {
+      this.eat(TokenType.SEMICOLON);
+    }
 
     return {
       type: 'VariableDeclaration',
@@ -410,7 +413,11 @@ export class Parser {
    */
   private parseBreakStatement(): AST.BreakStatement {
     const breakToken = this.previous();
-    this.eat(TokenType.SEMICOLON);
+    
+    // Semicolon is optional if followed by closing brace or EOF
+    if (this.check(TokenType.SEMICOLON)) {
+      this.eat(TokenType.SEMICOLON);
+    }
 
     return {
       type: 'BreakStatement',
@@ -426,7 +433,11 @@ export class Parser {
    */
   private parseContinueStatement(): AST.ContinueStatement {
     const continueToken = this.previous();
-    this.eat(TokenType.SEMICOLON);
+    
+    // Semicolon is optional if followed by closing brace or EOF
+    if (this.check(TokenType.SEMICOLON)) {
+      this.eat(TokenType.SEMICOLON);
+    }
 
     return {
       type: 'ContinueStatement',
@@ -525,7 +536,11 @@ export class Parser {
    */
   private parseExpressionStatement(): AST.ExpressionStatement {
     const expr = this.parseExpression();
-    this.eat(TokenType.SEMICOLON);
+    
+    // Semicolon is optional if followed by closing brace or EOF
+    if (this.check(TokenType.SEMICOLON)) {
+      this.eat(TokenType.SEMICOLON);
+    }
 
     return {
       type: 'ExpressionStatement',
@@ -533,7 +548,7 @@ export class Parser {
       line: expr.line,
       column: expr.column,
       start: expr.start,
-      end: this.previous().end,
+      end: expr.end,
     };
   }
 

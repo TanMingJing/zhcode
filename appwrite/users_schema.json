@@ -1,0 +1,130 @@
+{
+  "collectionId": "users",
+  "name": "Users",
+  "permissions": [
+    "read(\"user:\")",
+    "update(\"self\")",
+    "delete(\"self\")"
+  ],
+  "attributes": [
+    {
+      "key": "userId",
+      "name": "User ID",
+      "type": "string",
+      "size": 128,
+      "required": true,
+      "encrypted": false
+    },
+    {
+      "key": "email",
+      "name": "Email",
+      "type": "email",
+      "required": true,
+      "encrypted": false
+    },
+    {
+      "key": "username",
+      "name": "Username",
+      "type": "string",
+      "size": 128,
+      "required": true,
+      "encrypted": false
+    },
+    {
+      "key": "name",
+      "name": "Display Name",
+      "type": "string",
+      "size": 256,
+      "required": false,
+      "encrypted": false
+    },
+    {
+      "key": "avatar",
+      "name": "Avatar URL",
+      "type": "string",
+      "size": 2048,
+      "required": false,
+      "encrypted": false
+    },
+    {
+      "key": "bio",
+      "name": "Bio",
+      "type": "string",
+      "size": 1024,
+      "required": false,
+      "encrypted": false
+    },
+    {
+      "key": "theme",
+      "name": "Theme Preference",
+      "type": "string",
+      "size": 50,
+      "default": "dark",
+      "required": false,
+      "encrypted": false
+    },
+    {
+      "key": "language",
+      "name": "Language Preference",
+      "type": "string",
+      "size": 10,
+      "default": "en",
+      "required": false,
+      "encrypted": false
+    },
+    {
+      "key": "isVerified",
+      "name": "Email Verified",
+      "type": "boolean",
+      "default": false,
+      "required": false
+    },
+    {
+      "key": "isPremium",
+      "name": "Premium User",
+      "type": "boolean",
+      "default": false,
+      "required": false
+    },
+    {
+      "key": "createdAt",
+      "name": "Created At",
+      "type": "datetime",
+      "required": true,
+      "encrypted": false
+    },
+    {
+      "key": "updatedAt",
+      "name": "Updated At",
+      "type": "datetime",
+      "required": true,
+      "encrypted": false
+    }
+  ],
+  "indexes": [
+    {
+      "key": "idx_email",
+      "name": "Email Index",
+      "type": "unique",
+      "attributes": ["email"]
+    },
+    {
+      "key": "idx_username",
+      "name": "Username Index",
+      "type": "unique",
+      "attributes": ["username"]
+    },
+    {
+      "key": "idx_userId",
+      "name": "User ID Index",
+      "type": "unique",
+      "attributes": ["userId"]
+    },
+    {
+      "key": "idx_createdAt",
+      "name": "Created Date Index",
+      "type": "key",
+      "attributes": ["createdAt"]
+    }
+  ]
+}

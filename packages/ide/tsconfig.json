@@ -5,7 +5,12 @@
     "outDir": "./dist",
     "jsx": "react-jsx",
     "lib": ["ES2020", "DOM", "DOM.Iterable"],
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "noImplicitAny": false,
+    "noImplicitThis": false,
+    "strictNullChecks": false,
+    "strict": false,
+    "types": ["vite/client"]
   },
   "typeRoots": ["../../node_modules/@types"],
   "include": ["src"],

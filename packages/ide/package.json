@@ -11,8 +11,11 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
+    "@fortawesome/fontawesome-free": "^7.1.0",
     "@monaco-editor/react": "^4.6.0",
     "@zhcode/core": "^0.1.0",
+    "appwrite": "^21.5.0",
+    "jszip": "^3.10.1",
     "react": "^18.2.0",
     "react-dom": "^18.2.0"
   },

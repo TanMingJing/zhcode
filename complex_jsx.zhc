@@ -1,6 +1,0 @@
-令 app = (
-  <div className="container">
-    <h1>欢迎来到华语代码</h1>
-    <Button disabled={false}>开始编程</Button>
-  </div>
-);

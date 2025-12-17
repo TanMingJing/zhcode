@@ -1,0 +1,189 @@
+.autocomplete-container {
+  position: fixed;
+  background: linear-gradient(135deg, #1e1e2e 0%, #2d2d3f 100%);
+  border: 1px solid rgba(102, 126, 234, 0.3);
+  border-radius: 8px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+  z-index: 1000;
+  min-width: 300px;
+  max-width: 500px;
+  display: flex;
+  max-height: 400px;
+  overflow: hidden;
+  animation: autocompleteSlideIn 0.15s ease-out;
+}
+
+@keyframes autocompleteSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.autocomplete-list {
+  flex: 1;
+  overflow-y: auto;
+  min-width: 0;
+  max-height: 400px;
+}
+
+.autocomplete-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  cursor: pointer;
+  background: transparent;
+  border-left: 3px solid transparent;
+  transition: all 0.1s ease;
+  color: #e0e0e0;
+}
+
+.autocomplete-item:hover,
+.autocomplete-item.selected {
+  background: rgba(102, 126, 234, 0.15);
+  border-left-color: #667eea;
+}
+
+.item-icon {
+  font-size: 14px;
+  flex-shrink: 0;
+  width: 20px;
+  text-align: center;
+}
+
+.item-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.item-label {
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: #e0e0e0;
+}
+
+.item-label strong {
+  color: #667eea;
+  font-weight: 700;
+}
+
+.item-detail {
+  font-size: 12px;
+  color: #a0a0a0;
+  font-family: 'Fira Code', 'Courier New', monospace;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 2px;
+}
+
+.item-kind {
+  flex-shrink: 0;
+  margin-left: 8px;
+}
+
+.kind-badge {
+  display: inline-block;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.kind-keyword {
+  background: rgba(102, 126, 234, 0.2);
+  color: #93c5fd;
+}
+
+.kind-variable {
+  background: rgba(245, 158, 11, 0.2);
+  color: #fcd34d;
+}
+
+.kind-function {
+  background: rgba(16, 185, 129, 0.2);
+  color: #6ee7b7;
+}
+
+.kind-type {
+  background: rgba(236, 72, 153, 0.2);
+  color: #f472b6;
+}
+
+.kind-snippet {
+  background: rgba(139, 92, 246, 0.2);
+  color: #d8b4fe;
+}
+
+.autocomplete-preview {
+  width: 200px;
+  background: rgba(0, 0, 0, 0.3);
+  border-left: 1px solid rgba(102, 126, 234, 0.2);
+  padding: 12px 14px;
+  overflow-y: auto;
+  max-height: 400px;
+}
+
+.preview-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: #a0a0a0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.preview-content {
+  font-size: 12px;
+  color: #d0d0d0;
+  line-height: 1.6;
+  font-family: 'Fira Code', 'Courier New', monospace;
+  word-break: break-word;
+  white-space: pre-wrap;
+}
+
+/* Scrollbar styling */
+.autocomplete-list::-webkit-scrollbar,
+.autocomplete-preview::-webkit-scrollbar {
+  width: 6px;
+}
+
+.autocomplete-list::-webkit-scrollbar-track,
+.autocomplete-preview::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.autocomplete-list::-webkit-scrollbar-thumb,
+.autocomplete-preview::-webkit-scrollbar-thumb {
+  background: rgba(102, 126, 234, 0.3);
+  border-radius: 3px;
+}
+
+.autocomplete-list::-webkit-scrollbar-thumb:hover,
+.autocomplete-preview::-webkit-scrollbar-thumb:hover {
+  background: rgba(102, 126, 234, 0.5);
+}
+
+@media (max-width: 768px) {
+  .autocomplete-container {
+    min-width: 200px;
+    max-width: 90vw;
+  }
+
+  .autocomplete-preview {
+    display: none;
+  }
+}

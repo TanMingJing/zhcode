@@ -1,0 +1,106 @@
+{
+  "name": "zhcode_projects",
+  "permissions": [],
+  "attributes": [
+    {
+      "key": "userId",
+      "type": "string",
+      "status": "available",
+      "required": true,
+      "array": false,
+      "size": 255
+    },
+    {
+      "key": "projectName",
+      "type": "string",
+      "status": "available",
+      "required": true,
+      "array": false,
+      "size": 255
+    },
+    {
+      "key": "description",
+      "type": "string",
+      "status": "available",
+      "required": false,
+      "array": false,
+      "size": 5000
+    },
+    {
+      "key": "files",
+      "type": "json",
+      "status": "available",
+      "required": true,
+      "array": false
+    },
+    {
+      "key": "mainFile",
+      "type": "string",
+      "status": "available",
+      "required": true,
+      "array": false,
+      "size": 255
+    },
+    {
+      "key": "language",
+      "type": "string",
+      "status": "available",
+      "required": true,
+      "array": false,
+      "size": 10,
+      "default": "zh"
+    },
+    {
+      "key": "tags",
+      "type": "string",
+      "status": "available",
+      "required": false,
+      "array": true,
+      "size": 1000
+    },
+    {
+      "key": "isPublic",
+      "type": "boolean",
+      "status": "available",
+      "required": false,
+      "array": false,
+      "default": false
+    },
+    {
+      "key": "createdAt",
+      "type": "datetime",
+      "status": "available",
+      "required": true,
+      "array": false,
+      "default": "now"
+    },
+    {
+      "key": "updatedAt",
+      "type": "datetime",
+      "status": "available",
+      "required": true,
+      "array": false,
+      "default": "now"
+    }
+  ],
+  "indexes": [
+    {
+      "key": "idx_userId",
+      "type": "key",
+      "attributes": ["userId"],
+      "orders": ["ASC"]
+    },
+    {
+      "key": "idx_updatedAt",
+      "type": "key",
+      "attributes": ["updatedAt"],
+      "orders": ["DESC"]
+    },
+    {
+      "key": "idx_projectName",
+      "type": "key",
+      "attributes": ["projectName"],
+      "orders": ["ASC"]
+    }
+  ]
+}

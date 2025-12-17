@@ -1,2 +1,0 @@
-令 input = <input type="text" placeholder="输入名字" />;
-令 image = <img src="avatar.png" alt="头像" />;
