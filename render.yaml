@@ -5,12 +5,10 @@ services:
     runtime: node
     plan: free
     startCommand: pnpm start
-    buildCommand: pnpm install --no-frozen-lockfile && pnpm build
+    buildCommand: npm install -g pnpm@9.0.6 && pnpm install --no-frozen-lockfile && pnpm build
     envVars:
       - key: NODE_VERSION
         value: '20'
-      - key: PNPM_HOME
-        value: /opt/render/.pnpm
     
   - type: web
     name: wencode-ide
@@ -18,7 +16,7 @@ services:
     runtime: node
     plan: free
     startCommand: pnpm preview
-    buildCommand: pnpm install --no-frozen-lockfile && pnpm build
+    buildCommand: npm install -g pnpm@9.0.6 && pnpm install --no-frozen-lockfile && pnpm build
     envVars:
       - key: NODE_VERSION
         value: '20'
