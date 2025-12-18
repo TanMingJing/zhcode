@@ -4,6 +4,8 @@ import { logAIOperation, getAIOperationHistory, saveProjectToCloud, getUserProje
 import { useAuth } from './context/AuthContext';
 import { WindowsTerminal } from './components/WindowsTerminal';
 import { AIAssistant } from './components/AIAssistant';
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+import { CodeMinimap } from './components/CodeMinimap';
 
 // We'll load @zhcode/core dynamically to avoid build issues
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -1304,6 +1306,12 @@ export function App(): JSX.Element {
 
   return (
     <div className="ide-container">
+      {/* Code Minimap */}
+      <CodeMinimap 
+        code={files[activeFile]} 
+        editorRef={editorRef}
+        isVisible={true}
+      />
       <header className="header">
         <div className="header-left">
           <i className="fas fa-code header-icon"></i>

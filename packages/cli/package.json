@@ -18,7 +18,7 @@
   "author": "ZhCode Team",
   "license": "MIT",
   "dependencies": {
-    "@zhcode/core": "^0.1.0"
+    "@zhcode/core": "workspace:*"
   },
   "devDependencies": {
     "tsup": "^8.0.0"
