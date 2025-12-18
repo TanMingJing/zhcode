@@ -1420,12 +1420,6 @@ export function App(): JSX.Element {
 
   return (
     <div className="ide-container">
-      {/* Code Minimap */}
-      <CodeMinimap 
-        code={files[activeFile]} 
-        editorRef={editorRef}
-        isVisible={true}
-      />
       <header className="header">
         <div className="header-left">
           <i className="fas fa-code header-icon"></i>
@@ -2745,7 +2739,13 @@ export function App(): JSX.Element {
         {/* Center - Editor and Preview */}
         <main className="editor-container" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
           {/* Top: Editor Section */}
-          <div className="editor-wrapper" style={{ flex: 1 }}>
+          <div className="editor-wrapper" style={{ flex: 1, position: 'relative' }}>
+            {/* Code Minimap - positioned in editor top right */}
+            <CodeMinimap 
+              code={files[activeFile]} 
+              editorRef={editorRef}
+              isVisible={true}
+            />
             <div className="editor-header">
               <i className="fas fa-pen"></i>
               编辑器

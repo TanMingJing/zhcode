@@ -246,8 +246,8 @@ export function CodeMinimap({ code, isVisible }: CodeMinimapProps): JSX.Element 
         <canvas
           ref={canvasRef}
           className="minimap-canvas"
-          width={150}
-          height={300}
+          width={120}
+          height={200}
           title="Click to jump to position"
         />
         {/* Viewport slider */}

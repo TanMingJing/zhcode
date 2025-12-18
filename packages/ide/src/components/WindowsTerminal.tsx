@@ -5,6 +5,9 @@ interface WindowsTerminalProps {
   onClose?: () => void;
 }
 
+// Terminal launch only works with local backend
+const API_URL = 'http://localhost:3002';
+
 export function WindowsTerminal({ onClose }: WindowsTerminalProps) {
   const [isLaunching, setIsLaunching] = useState(false);
   const [launchStatus, setLaunchStatus] = useState<string>('');
@@ -15,13 +18,13 @@ export function WindowsTerminal({ onClose }: WindowsTerminalProps) {
 
     try {
       // Call backend to open Windows Terminal
-      const response = await fetch('http://localhost:3002/api/launch-terminal', {
+      const response = await fetch(`${API_URL}/api/launch-terminal`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          startingPath: process.cwd?.() || 'C:\\'
+          startingPath: 'C:\\'
         })
       });
 
@@ -34,7 +37,7 @@ export function WindowsTerminal({ onClose }: WindowsTerminalProps) {
         setLaunchStatus('❌ 启动失败，请检查 Windows Terminal 是否已安装');
       }
     } catch (error) {
-      setLaunchStatus('❌ 连接到后端失败，请运行后端服务');
+      setLaunchStatus('❌ 需要本地后端服务。请在 packages/ai-service 运行: pnpm dev');
       console.error('Failed to launch terminal:', error);
     }
 
@@ -46,7 +49,7 @@ export function WindowsTerminal({ onClose }: WindowsTerminalProps) {
     setLaunchStatus('启动 PowerShell 中...');
 
     try {
-      const response = await fetch('http://localhost:3002/api/launch-powershell', {
+      const response = await fetch(`${API_URL}/api/launch-powershell`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -62,7 +65,7 @@ export function WindowsTerminal({ onClose }: WindowsTerminalProps) {
         setLaunchStatus('❌ 启动失败');
       }
     } catch (error) {
-      setLaunchStatus('❌ 连接到后端失败');
+      setLaunchStatus('❌ 需要本地后端服务。请在 packages/ai-service 运行: pnpm dev');
       console.error('Failed to launch PowerShell:', error);
     }
 
@@ -74,7 +77,7 @@ export function WindowsTerminal({ onClose }: WindowsTerminalProps) {
     setLaunchStatus('启动 Command Prompt 中...');
 
     try {
-      const response = await fetch('http://localhost:3002/api/launch-cmd', {
+      const response = await fetch(`${API_URL}/api/launch-cmd`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -90,7 +93,7 @@ export function WindowsTerminal({ onClose }: WindowsTerminalProps) {
         setLaunchStatus('❌ 启动失败');
       }
     } catch (error) {
-      setLaunchStatus('❌ 连接到后端失败');
+      setLaunchStatus('❌ 需要本地后端服务。请在 packages/ai-service 运行: pnpm dev');
       console.error('Failed to launch CMD:', error);
     }
 
