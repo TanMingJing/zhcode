@@ -4,15 +4,17 @@ import './AIAssistant.css';
 interface AIAssistantProps {
   selectedCode?: string;
   onClose?: () => void;
+  onInsertCode?: (code: string) => void;
 }
 
 type AIFeature = 'autocomplete' | 'explain' | 'refactor' | 'bugfix' | 'unittest' | null;
 
-export function AIAssistant({ selectedCode, onClose }: AIAssistantProps) {
+export function AIAssistant({ selectedCode, onClose, onInsertCode }: AIAssistantProps) {
   const [activeFeature, setActiveFeature] = useState<AIFeature>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [result, setResult] = useState<string>('');
   const [error, setError] = useState<string>('');
+  const [copied, setCopied] = useState(false);
 
   const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3002';
 
@@ -80,9 +82,8 @@ export function AIAssistant({ selectedCode, onClose }: AIAssistantProps) {
       setError('❌ 请先选择代码');
       return;
     }
-    await callAIService('/api/explain-error', {
-      code: selectedCode,
-      error: ''
+    await callAIService('/api/detect-bugs', {
+      code: selectedCode
     });
   };
 
@@ -92,15 +93,30 @@ export function AIAssistant({ selectedCode, onClose }: AIAssistantProps) {
       setError('❌ 请先选择代码');
       return;
     }
-    await callAIService('/api/generate', {
-      code: selectedCode,
-      type: 'unittest'
+    await callAIService('/api/generate-unittest', {
+      code: selectedCode
     });
   };
 
   const copyToClipboard = () => {
     navigator.clipboard.writeText(result);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
+
+  const insertToEditor = () => {
+    if (onInsertCode && result) {
+      // Extract only code content (skip explanations)
+      const codeOnly = result
+        .split('\n')
+        .filter(line => !line.startsWith('//') || line.startsWith('// ==='))
+        .join('\n');
+      onInsertCode(codeOnly);
+    }
+  };
+
+  // Check if result contains insertable code
+  const hasInsertableCode = activeFeature === 'unittest' || activeFeature === 'autocomplete';
 
   return (
     <div className="ai-assistant-container">
@@ -198,15 +214,26 @@ export function AIAssistant({ selectedCode, onClose }: AIAssistantProps) {
               {activeFeature === 'explain' && '📖 代码解释'}
               {activeFeature === 'refactor' && '🔧 重构建议'}
               {activeFeature === 'bugfix' && '🐛 Bug 分析'}
-              {activeFeature === 'unittest' && '✅ 单元测试'}
+              {activeFeature === 'unittest' && '🧪 单元测试'}
             </span>
-            <button
-              className="ai-copy-btn"
-              onClick={copyToClipboard}
-              title="复制"
-            >
-              <i className="fas fa-copy"></i>
-            </button>
+            <div className="ai-result-actions">
+              {hasInsertableCode && onInsertCode && (
+                <button
+                  className="ai-insert-btn"
+                  onClick={insertToEditor}
+                  title="插入到编辑器"
+                >
+                  <i className="fas fa-file-import"></i>
+                </button>
+              )}
+              <button
+                className="ai-copy-btn"
+                onClick={copyToClipboard}
+                title={copied ? '已复制!' : '复制'}
+              >
+                <i className={copied ? 'fas fa-check' : 'fas fa-copy'}></i>
+              </button>
+            </div>
           </div>
           <div className="ai-result-content">
             <pre>{result}</pre>
@@ -219,7 +246,13 @@ export function AIAssistant({ selectedCode, onClose }: AIAssistantProps) {
         <div className="ai-empty-state">
           <i className="fas fa-robot"></i>
           <p>选择一个功能开始</p>
-          <small>提示: 代码补全不需要选中代码</small>
+          {selectedCode ? (
+            <small className="ai-selected-info">
+              <i className="fas fa-check-circle"></i> 已选中 {selectedCode.split('\n').length} 行代码
+            </small>
+          ) : (
+            <small>提示: 选中代码后可使用更多功能</small>
+          )}
         </div>
       )}
     </div>
