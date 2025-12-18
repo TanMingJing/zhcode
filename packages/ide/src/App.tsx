@@ -60,12 +60,46 @@ function downloadFile(content: string, filename: string, type: string = 'text/pl
 
 // AI Service API helper - Direct OpenRouter/OpenAI calls
 async function callAIService(action: string, code: string, apiKey?: string, provider: string = 'local', language: string = 'zh'): Promise<any> {
+  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3002';
+  
   if (provider === 'local') {
-    // Local AI service - basic responses
-    return {
-      explanation: language === 'en' ? 'This is a basic response from the local AI service.' : '这是本地 AI 服务的基础响应。',
-      suggestions: [language === 'en' ? 'This is an example suggestion' : '这是一个示例建议']
-    };
+    // Call local backend AI service
+    try {
+      const endpointMap: Record<string, string> = {
+        'explain-code': '/api/explain-code',
+        'explain-error': '/api/explain-error',
+        'suggest-refactor': '/api/suggest-refactor',
+        'generate': '/api/generate',
+        'detect-bugs': '/api/detect-bugs',
+        'generate-unittest': '/api/generate-unittest',
+        'autocomplete': '/api/autocomplete'
+      };
+      
+      const endpoint = endpointMap[action] || '/api/explain-code';
+      
+      const response = await fetch(`${API_URL}${endpoint}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code, description: code })
+      });
+      
+      if (!response.ok) {
+        throw new Error('Backend service error');
+      }
+      
+      const data = await response.json();
+      return {
+        explanation: data.explanation || data.result || JSON.stringify(data, null, 2),
+        suggestions: data.suggestions || [],
+        result: data.result
+      };
+    } catch (e) {
+      return {
+        error: language === 'en' 
+          ? '❌ Failed to connect to backend. Please run: pnpm dev in packages/ai-service' 
+          : '❌ 连接后端失败。请运行: pnpm dev (在 packages/ai-service 目录)'
+      };
+    }
   }
 
   if (!apiKey) {
@@ -256,6 +290,7 @@ export function App(): JSX.Element {
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [showAI, setShowAI] = useState(false);
   const [selectedLineNumber, setSelectedLineNumber] = useState<number | null>(null);
+  const [editorScrollTop, setEditorScrollTop] = useState(0);
   const [gitHubToken, setGitHubToken] = useState(() => {
     return typeof window !== 'undefined' ? localStorage.getItem('zhcode_github_token') || '' : '';
   });
@@ -1194,6 +1229,10 @@ export function App(): JSX.Element {
       } else if (result?.suggestions && Array.isArray(result.suggestions)) {
         setAiSuggestions(result.suggestions);
         await logOperation('suggest-refactor', files[activeFile], result.suggestions.join('\n'), 'success');
+      } else if (result?.result) {
+        // Handle new format from enhanced backend
+        setAiExplanation(result.result);
+        await logOperation('suggest-refactor', files[activeFile], result.result, 'success');
       } else {
         setAiSuggestions(['无法获取建议']);
         await logOperation('suggest-refactor', files[activeFile], '', 'error', '无法获取建议');
@@ -1203,6 +1242,81 @@ export function App(): JSX.Element {
       await logOperation('suggest-refactor', files[activeFile], '', 'error', String(e));
     }
   }, [files, activeFile, apiKey, aiProvider, aiLanguage, logOperation]);
+
+  // Bug Detection Handler
+  const handleDetectBugs = useCallback(async () => {
+    const codeToAnalyze = selectedText || files[activeFile];
+    if (!codeToAnalyze) {
+      setAiExplanation('请先选择代码或确保编辑器有内容');
+      return;
+    }
+    try {
+      setAiExplanation('🔍 正在检测 Bug...');
+      const result = await callAIService('detect-bugs', codeToAnalyze, apiKey, aiProvider, aiLanguage);
+      if (result?.error) {
+        setAiExplanation(result.error);
+        await logOperation('detect-bugs', codeToAnalyze, result.error, 'error', result.error);
+      } else if (result?.result) {
+        setAiExplanation(`🐛 Bug 检测结果:\n\n${result.result}`);
+        await logOperation('detect-bugs', codeToAnalyze, result.result, 'success');
+      } else {
+        setAiExplanation('无法连接到AI服务');
+        await logOperation('detect-bugs', codeToAnalyze, '', 'error', '无法连接到AI服务');
+      }
+    } catch (e) {
+      setAiExplanation('AI 服务错误');
+      await logOperation('detect-bugs', codeToAnalyze, '', 'error', String(e));
+    }
+  }, [selectedText, files, activeFile, apiKey, aiProvider, aiLanguage, logOperation]);
+
+  // Unit Test Generation Handler
+  const handleGenerateUnitTest = useCallback(async () => {
+    const codeToTest = selectedText || files[activeFile];
+    if (!codeToTest) {
+      setAiExplanation('请先选择代码或确保编辑器有内容');
+      return;
+    }
+    try {
+      setAiExplanation('🧪 正在生成单元测试...');
+      const result = await callAIService('generate-unittest', codeToTest, apiKey, aiProvider, aiLanguage);
+      if (result?.error) {
+        setAiExplanation(result.error);
+        await logOperation('generate-unittest', codeToTest, result.error, 'error', result.error);
+      } else if (result?.result) {
+        setAiExplanation(`🧪 生成的单元测试:\n\n${result.result}`);
+        await logOperation('generate-unittest', codeToTest, result.result, 'success');
+      } else {
+        setAiExplanation('无法连接到AI服务');
+        await logOperation('generate-unittest', codeToTest, '', 'error', '无法连接到AI服务');
+      }
+    } catch (e) {
+      setAiExplanation('AI 服务错误');
+      await logOperation('generate-unittest', codeToTest, '', 'error', String(e));
+    }
+  }, [selectedText, files, activeFile, apiKey, aiProvider, aiLanguage, logOperation]);
+
+  // Code Documentation Handler
+  const handleGenerateDoc = useCallback(async () => {
+    const codeToDoc = selectedText || files[activeFile];
+    if (!codeToDoc) {
+      setAiExplanation('请先选择代码或确保编辑器有内容');
+      return;
+    }
+    try {
+      setAiExplanation('📝 正在生成文档...');
+      const result = await callAIService('explain-code', codeToDoc, apiKey, aiProvider, aiLanguage);
+      if (result?.error) {
+        setAiExplanation(result.error);
+      } else if (result?.explanation || result?.result) {
+        const docContent = result.explanation || result.result;
+        setAiExplanation(`📝 代码文档:\n\n${docContent}`);
+      } else {
+        setAiExplanation('无法连接到AI服务');
+      }
+    } catch (e) {
+      setAiExplanation('AI 服务错误');
+    }
+  }, [selectedText, files, activeFile, apiKey, aiProvider, aiLanguage]);
 
   // Context menu handlers
   const handleEditorContextMenu = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
@@ -2653,7 +2767,7 @@ export function App(): JSX.Element {
                   <div 
                     className="line-highlight"
                     style={{
-                      top: `calc(15px + (${selectedLineNumber - 1}) * (14px * 1.6))`
+                      top: `calc(15px + (${selectedLineNumber - 1}) * (14px * 1.6) - ${editorScrollTop}px)`
                     }}
                   />
                 )}
@@ -2661,6 +2775,17 @@ export function App(): JSX.Element {
                   className="code-editor"
                   value={files[activeFile] || ''}
                   onChange={(e) => handleCodeChange(e.target.value)}
+                  onScroll={(e) => {
+                    // Sync line numbers scroll with textarea
+                    const textarea = e.currentTarget;
+                    const scrollTop = textarea.scrollTop;
+                    setEditorScrollTop(scrollTop);
+                    
+                    const lineNumbersEl = textarea.closest('.editor-content-wrapper')?.querySelector('.line-numbers') as HTMLElement;
+                    if (lineNumbersEl) {
+                      lineNumbersEl.scrollTop = scrollTop;
+                    }
+                  }}
                   onClick={(e) => {
                     const textarea = e.currentTarget;
                     const text = textarea.value;
@@ -2910,6 +3035,30 @@ export function App(): JSX.Element {
                     >
                       <i className="fas fa-star"></i>
                       <span>优化建议</span>
+                    </button>
+                    <button 
+                      className="btn btn-ai-tool"
+                      onClick={handleDetectBugs}
+                      title="检测潜在的 Bug"
+                    >
+                      <i className="fas fa-bug"></i>
+                      <span>Bug 检测</span>
+                    </button>
+                    <button 
+                      className="btn btn-ai-tool"
+                      onClick={handleGenerateUnitTest}
+                      title="生成单元测试代码"
+                    >
+                      <i className="fas fa-vial"></i>
+                      <span>单元测试</span>
+                    </button>
+                    <button 
+                      className="btn btn-ai-tool"
+                      onClick={handleGenerateDoc}
+                      title="生成代码文档"
+                    >
+                      <i className="fas fa-file-lines"></i>
+                      <span>生成文档</span>
                     </button>
                   </div>
                 </div>

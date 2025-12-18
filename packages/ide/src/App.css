@@ -435,16 +435,24 @@ body {
   min-width: 80px;
   text-align: right;
   user-select: none;
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
   line-height: 1.6;
   font-family: 'Fira Code', 'Courier New', monospace;
   font-size: 14px;
+  /* Hide scrollbar but keep scroll functionality */
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.line-numbers::-webkit-scrollbar {
+  display: none;
 }
 
 .editor-editor-wrapper {
   flex: 1;
   position: relative;
-  overflow: visible;
+  overflow: hidden;
   width: 100%;
   background: var(--bg-secondary);
 }
