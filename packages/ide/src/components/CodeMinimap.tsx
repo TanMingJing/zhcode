@@ -14,7 +14,7 @@ interface ViewportInfo {
   percentage: number; // Scroll percentage (0-100)
 }
 
-export function CodeMinimap({ code, isVisible }: CodeMinimapProps): JSX.Element {
+export function CodeMinimap({ code = '', isVisible }: CodeMinimapProps): JSX.Element {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [viewport, setViewport] = useState<ViewportInfo>({ top: 0, height: 50, percentage: 0 });
@@ -264,7 +264,7 @@ export function CodeMinimap({ code, isVisible }: CodeMinimapProps): JSX.Element 
         </div>
       </div>
       <div className="minimap-footer">
-        <span className="minimap-lines">{code.split('\n').length} lines</span>
+        <span className="minimap-lines">{(code || '').split('\n').length} lines</span>
       </div>
     </div>
   );

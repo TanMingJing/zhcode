@@ -10,7 +10,7 @@ const getEnv = (key: string, defaultValue: string) => {
 };
 
 const client = new Client()
-  .setEndpoint('https://cloud.appwrite.io/v1')
+  .setEndpoint(getEnv('VITE_APPWRITE_ENDPOINT', 'https://sgp.cloud.appwrite.io/v1'))
   .setProject(getEnv('VITE_APPWRITE_PROJECT_ID', 'default'));
 
 const databases = new Databases(client);

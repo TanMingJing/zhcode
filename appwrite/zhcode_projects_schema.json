@@ -1,5 +1,6 @@
 {
   "name": "zhcode_projects",
+  "description": "Stores project metadata. File contents are in Storage bucket 'zhcode_files'. fileRefs links to storage files.",
   "permissions": [],
   "attributes": [
     {
@@ -8,7 +9,8 @@
       "status": "available",
       "required": true,
       "array": false,
-      "size": 255
+      "size": 255,
+      "description": "Owner user ID"
     },
     {
       "key": "projectName",
@@ -16,7 +18,8 @@
       "status": "available",
       "required": true,
       "array": false,
-      "size": 255
+      "size": 255,
+      "description": "Project display name"
     },
     {
       "key": "description",
@@ -27,11 +30,13 @@
       "size": 5000
     },
     {
-      "key": "files",
-      "type": "json",
+      "key": "fileRefs",
+      "type": "string",
       "status": "available",
       "required": true,
-      "array": false
+      "array": false,
+      "size": 100000,
+      "description": "JSON array of {filename, storageId, size, updatedAt}. storageId references files in zhcode_files bucket."
     },
     {
       "key": "mainFile",
@@ -39,7 +44,8 @@
       "status": "available",
       "required": true,
       "array": false,
-      "size": 255
+      "size": 255,
+      "description": "Main entry file name"
     },
     {
       "key": "language",
@@ -72,7 +78,8 @@
       "status": "available",
       "required": true,
       "array": false,
-      "default": "now"
+      "default": "now",
+      "description": "Project creation timestamp"
     },
     {
       "key": "updatedAt",
@@ -80,7 +87,8 @@
       "status": "available",
       "required": true,
       "array": false,
-      "default": "now"
+      "default": "now",
+      "description": "Last save/update timestamp"
     }
   ],
   "indexes": [

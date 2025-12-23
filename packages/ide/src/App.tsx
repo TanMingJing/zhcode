@@ -1,9 +1,39 @@
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import './App.css';
-import { logAIOperation, getAIOperationHistory, saveProjectToCloud, getUserProjects, deleteProject, type AIOperation, type ZhCodeProject } from './services/appwriteService';
+import { logAIOperation, getAIOperationHistory, type AIOperation } from './services/appwriteService';
+import { 
+  loadSessionState, 
+  saveSessionState, 
+  openLocalFolder, 
+  saveLocalFile, 
+  startAutoSave, 
+  stopAutoSave,
+  isFileSystemAccessSupported,
+  hasLocalDirectory,
+  startFileWatcher,
+  stopFileWatcher,
+  syncFileToLocal,
+  syncDeleteFileFromLocal,
+  updateWatcherState,
+  type StorageMode,
+  type SessionState
+} from './services/fileSystemService';
+import {
+  createProject,
+  saveProject,
+  loadProject,
+  listAllProjects,
+  deleteProject,
+  getCurrentProjectId,
+  setCurrentProjectId,
+  type CloudProject,
+  type ProjectListItem
+} from './services/cloudProjectService';
 import { useAuth } from './context/AuthContext';
 import { WindowsTerminal } from './components/WindowsTerminal';
 import { AIAssistant } from './components/AIAssistant';
+import { Autocomplete, type Suggestion, generateSuggestions } from './components/Autocomplete';
+import { ProblemsPanel, type Problem } from './components/ProblemsPanel';
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { CodeMinimap } from './components/CodeMinimap';
 
@@ -282,8 +312,7 @@ export function App(): JSX.Element {
   const [bottomPanelHeight, setBottomPanelHeight] = useState(250);
   const [terminalWidth, setTerminalWidth] = useState(40);
   const [outputWidth, setOutputWidth] = useState(30);
-  const [showTerminal, setShowTerminal] = useState(true);
-  const [showOutput, setShowOutput] = useState(true);
+  const [activeBottomTab, setActiveBottomTab] = useState<'terminal' | 'output' | 'problems'>('terminal');
   const [showPreview, setShowPreview] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showGitHub, setShowGitHub] = useState(false);
@@ -323,14 +352,52 @@ export function App(): JSX.Element {
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [profileMessage, setProfileMessage] = useState('');
   const { user, logout, updateProfile, isLoading: authLoading } = useAuth();
-  const [files, setFiles] = useState<Record<string, string>>({
-    'main.zhc': defaultCode,
+  
+  // File system state
+  const [storageMode, setStorageMode] = useState<StorageMode>(() => {
+    const saved = loadSessionState();
+    return saved?.storageMode || 'cloud';
   });
-  const [activeFile, setActiveFile] = useState('main.zhc');
+  const [localFolderName, setLocalFolderName] = useState<string | null>(() => {
+    const saved = loadSessionState();
+    return saved?.localFolderName || null;
+  });
+  // Store the full path for terminal - persisted in localStorage
+  const [localFolderPath, setLocalFolderPath] = useState<string>(() => {
+    return localStorage.getItem('zhcode_terminal_path') || '';
+  });
+  const [autoSaveEnabled, setAutoSaveEnabled] = useState(true);
+  const [lastSaveTime, setLastSaveTime] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [showStorageModal, setShowStorageModal] = useState(false);
+  const [cloudProjectsList, setCloudProjectsList] = useState<ProjectListItem[]>([]);
+  
+  // Theme state (light/dark mode)
+  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
+    return typeof window !== 'undefined' 
+      ? (localStorage.getItem('zhcode_theme') as 'light' | 'dark') || 'dark'
+      : 'dark';
+  });
+
+  // Initialize files from session state
+  const [files, setFiles] = useState<Record<string, string>>(() => {
+    const saved = loadSessionState();
+    if (saved?.files && Object.keys(saved.files).length > 0) {
+      return saved.files;
+    }
+    return { 'main.zhc': defaultCode };
+  });
+  const [activeFile, setActiveFile] = useState(() => {
+    const saved = loadSessionState();
+    if (saved?.activeFile && saved.files?.[saved.activeFile]) {
+      return saved.activeFile;
+    }
+    return 'main.zhc';
+  });
   const [output, setOutput] = useState('');
   const [error, setError] = useState('');
   const [notification, setNotification] = useState('');
-  const [notificationType, setNotificationType] = useState<'success' | 'info'>('success');
+  const [notificationType, setNotificationType] = useState<'success' | 'info' | 'error'>('success');
   const [newFileName, setNewFileName] = useState('');
   const [renamingFile, setRenamingFile] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState('');
@@ -344,15 +411,28 @@ export function App(): JSX.Element {
   const [showAIHistory, setShowAIHistory] = useState(false);
   const [aiHistory, setAiHistory] = useState<AIOperation[]>([]);
   const [aiHistoryLoading, setAiHistoryLoading] = useState(false);
-  const [showCloudProjects, setShowCloudProjects] = useState(false);
-  const [cloudProjects, setCloudProjects] = useState<ZhCodeProject[]>([]);
-  const [cloudProjectsLoading, setCloudProjectsLoading] = useState(false);
   const [projectName, setProjectName] = useState('');
-  const [projectDescription, setProjectDescription] = useState('');
+  const [currentCloudProjectId, setCurrentCloudProjectId] = useState<string | null>(null);
+  
+  // Autocomplete state
+  const [showAutocomplete, setShowAutocomplete] = useState(false);
+  const [autocompletePosition, setAutocompletePosition] = useState({ x: 0, y: 0 });
+  const [autocompleteSuggestions, setAutocompleteSuggestions] = useState<Suggestion[]>([]);
+  const [autocompleteSelectedIndex, setAutocompleteSelectedIndex] = useState(0);
+  const [autocompleteFilterText, setAutocompleteFilterText] = useState('');
+  const autocompleteTimeoutRef = useRef<NodeJS.Timeout>();
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  
+  // Problems/Errors state
+  const [problems, setProblems] = useState<Problem[]>([]);
+  const [errorLines, setErrorLines] = useState<Set<number>>(new Set());
+  const problemsTimeoutRef = useRef<NodeJS.Timeout>();
+  
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const editorRef = useRef<any>(null);
   const contextMenuRef = useRef<HTMLDivElement>(null);
   const compileTimeoutRef = useRef<NodeJS.Timeout>();
+  const autoSaveTimeoutRef = useRef<NodeJS.Timeout>();
   const sidebarDragRef = useRef<number>(0);
   const aiPanelDragRef = useRef<number>(0);
   const editorDragRef = useRef<number>(0);
@@ -361,6 +441,357 @@ export function App(): JSX.Element {
   const outputWidthDragRef = useRef<number>(0);
   const terminalAIDragRef = useRef<number>(0);
   const aiOutputDragRef = useRef<number>(0);
+
+  // ========== File System Handlers ==========
+  
+  // Get current session state for saving
+  const getCurrentSessionState = useCallback((): SessionState => {
+    return {
+      files,
+      activeFile,
+      storageMode,
+      localFolderName: localFolderName || undefined,
+      projectName: projectName || undefined,
+      lastSaved: new Date().toISOString()
+    };
+  }, [files, activeFile, storageMode, localFolderName, projectName]);
+
+  // Save session state (for auto-save and manual save)
+  const handleSaveSession = useCallback(async () => {
+    setIsSaving(true);
+    try {
+      const state = getCurrentSessionState();
+      
+      // Always save to localStorage for session persistence
+      saveSessionState(state);
+      
+      // If local mode and directory is open, save to local files
+      if (storageMode === 'local' && hasLocalDirectory()) {
+        const currentContent = files[activeFile];
+        if (currentContent !== undefined) {
+          await saveLocalFile(activeFile, currentContent);
+        }
+      }
+      
+      setLastSaveTime(new Date().toLocaleTimeString());
+      setNotification('✅ 已保存');
+      setNotificationType('success');
+      setTimeout(() => setNotification(''), 2000);
+    } catch (error) {
+      console.error('Save failed:', error);
+      setNotification('❌ 保存失败');
+      setNotificationType('info');
+      setTimeout(() => setNotification(''), 3000);
+    } finally {
+      setIsSaving(false);
+    }
+  }, [getCurrentSessionState, files, activeFile, storageMode]);
+
+  // Open local folder
+  const handleOpenLocalFolder = useCallback(async () => {
+    if (!isFileSystemAccessSupported()) {
+      setNotification('❌ 您的浏览器不支持本地文件系统访问');
+      setNotificationType('info');
+      setTimeout(() => setNotification(''), 3000);
+      return;
+    }
+
+    // Open the folder using File System Access API (browser)
+    const result = await openLocalFolder();
+    if (result) {
+      setFiles(result.files);
+      setLocalFolderName(result.folderName);
+      setStorageMode('local');
+      
+      const fileNames = Object.keys(result.files);
+      if (fileNames.length > 0) {
+        const mainFile = fileNames.find(f => 
+          f.includes('main') || f.includes('index') || f.includes('app')
+        ) || fileNames[0];
+        setActiveFile(mainFile);
+      }
+
+      // Try to resolve full path via backend for terminal use
+      try {
+        const response = await fetch('http://localhost:3002/api/resolve-folder-path', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ folderName: result.folderName })
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success && data.path) {
+            setLocalFolderPath(data.path);
+            localStorage.setItem('zhcode_terminal_path', data.path);
+          }
+        }
+      } catch (error) {
+        console.log('Backend not available for path resolution');
+      }
+      
+      setNotification(`✅ 已打开文件夹: ${result.folderName} (${fileNames.length} 个文件)`);
+      setNotificationType('success');
+      setTimeout(() => setNotification(''), 3000);
+      
+      saveSessionState({
+        files: result.files,
+        activeFile: Object.keys(result.files)[0] || 'main.zhc',
+        storageMode: 'local',
+        localFolderName: result.folderName,
+        lastSaved: new Date().toISOString()
+      });
+
+      // Start file watcher
+      startFileWatcher(result.files, (changes) => {
+        console.log('Local file changes detected:', changes);
+        setFiles(changes.newFiles);
+        
+        const changeCount = changes.added.length + changes.modified.length + changes.deleted.length;
+        if (changeCount > 0) {
+          const messages: string[] = [];
+          if (changes.added.length > 0) messages.push(`${changes.added.length} 个新文件`);
+          if (changes.modified.length > 0) messages.push(`${changes.modified.length} 个修改`);
+          if (changes.deleted.length > 0) messages.push(`${changes.deleted.length} 个删除`);
+          
+          setNotification(`🔄 检测到本地更改: ${messages.join(', ')}`);
+          setNotificationType('info');
+          setTimeout(() => setNotification(''), 3000);
+        }
+        
+        if (changes.deleted.includes(activeFile)) {
+          const newActiveFile = Object.keys(changes.newFiles)[0];
+          if (newActiveFile) {
+            setActiveFile(newActiveFile);
+          }
+        }
+      });
+    }
+  }, [activeFile]);
+
+  // Save all files to local folder
+  const handleSaveAllLocal = useCallback(async () => {
+    if (!hasLocalDirectory()) {
+      setNotification('❌ 请先打开一个文件夹');
+      setNotificationType('info');
+      setTimeout(() => setNotification(''), 3000);
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      for (const [path, content] of Object.entries(files)) {
+        await saveLocalFile(path, content);
+      }
+      setLastSaveTime(new Date().toLocaleTimeString());
+      setNotification(`✅ 已保存所有文件到 ${localFolderName}`);
+      setNotificationType('success');
+      setTimeout(() => setNotification(''), 3000);
+    } catch (error) {
+      setNotification('❌ 保存失败: ' + String(error));
+      setNotificationType('info');
+      setTimeout(() => setNotification(''), 3000);
+    } finally {
+      setIsSaving(false);
+    }
+  }, [files, localFolderName]);
+
+  // Save project to cloud storage (using new cloudProjectService)
+  const handleSaveToCloudStorage = useCallback(async () => {
+    if (!projectName.trim()) {
+      setNotification('❌ 请输入项目名称');
+      setNotificationType('info');
+      setTimeout(() => setNotification(''), 3000);
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      const userId = localStorage.getItem('zhcode_user_id') || 'default_user';
+      console.log('Saving project:', { projectName, userId, currentCloudProjectId, filesCount: Object.keys(files).length });
+      
+      let savedProject: CloudProject | null;
+      
+      if (currentCloudProjectId) {
+        // Update existing project
+        savedProject = await saveProject(currentCloudProjectId, files, projectName);
+      } else {
+        // Create new project
+        savedProject = await createProject(projectName, userId, files);
+        if (savedProject) {
+          setCurrentCloudProjectId(savedProject.id);
+        }
+      }
+      
+      if (savedProject) {
+        console.log('Project saved:', savedProject);
+        setStorageMode('cloud');
+        setLastSaveTime(new Date().toLocaleTimeString());
+        setNotification(`✅ 项目已保存: ${projectName}`);
+        setNotificationType('success');
+        
+        // Refresh cloud projects list
+        const updatedProjects = await listAllProjects();
+        console.log('Updated projects list:', updatedProjects);
+        setCloudProjectsList(updatedProjects);
+        
+        // Close modal after successful save
+        setTimeout(() => {
+          setShowStorageModal(false);
+        }, 500);
+      } else {
+        setNotification('❌ 保存失败');
+        setNotificationType('info');
+      }
+      setTimeout(() => setNotification(''), 3000);
+    } catch (error) {
+      console.error('Save error:', error);
+      setNotification('❌ 保存失败: ' + String(error));
+      setNotificationType('info');
+      setTimeout(() => setNotification(''), 3000);
+    } finally {
+      setIsSaving(false);
+    }
+  }, [files, projectName, currentCloudProjectId]);
+
+  // Create new project
+  const handleNewCloudProject = useCallback(async () => {
+    console.log('handleNewCloudProject called');
+    const userId = localStorage.getItem('zhcode_user_id') || 'default_user';
+    
+    // Create a new project immediately
+    const newProject = await createProject('未命名项目', userId);
+    
+    if (newProject) {
+      setFiles(newProject.files);
+      setProjectName(newProject.name);
+      setCurrentCloudProjectId(newProject.id);
+      setActiveFile('main.zhc');
+      setStorageMode('cloud');
+      
+      // Refresh projects list
+      const projects = await listAllProjects();
+      setCloudProjectsList(projects);
+      
+      setNotification('✅ 新项目已创建');
+      setNotificationType('success');
+      setTimeout(() => setNotification(''), 3000);
+    } else {
+      setNotification('❌ 创建项目失败');
+      setNotificationType('info');
+      setTimeout(() => setNotification(''), 3000);
+    }
+  }, []);
+
+  // Open storage modal and refresh projects list
+  const handleOpenStorageModal = useCallback(async () => {
+    const projects = await listAllProjects();
+    console.log('Opening storage modal, projects:', projects);
+    setCloudProjectsList(projects);
+    setShowStorageModal(true);
+  }, []);
+
+  // Load project from cloud storage
+  const handleLoadFromCloudStorage = useCallback(async (projectId: string) => {
+    setIsSaving(true);
+    try {
+      const project = await loadProject(projectId);
+      if (project) {
+        setFiles(project.files || {});
+        setProjectName(project.name || 'Untitled Project');
+        setCurrentCloudProjectId(project.id);
+        setStorageMode('cloud');
+        
+        // Set first file as active
+        const fileNames = Object.keys(project.files || {});
+        if (fileNames.length > 0) {
+          setActiveFile(fileNames[0]);
+        } else {
+          setActiveFile('main.zhc');
+        }
+        
+        setShowStorageModal(false);
+        setNotification(`✅ 已加载项目: ${project.name}`);
+        setNotificationType('success');
+        setTimeout(() => setNotification(''), 3000);
+        
+        // Save to session
+        saveSessionState({
+          files: project.files || {},
+          activeFile: fileNames[0] || 'main.zhc',
+          storageMode: 'cloud',
+          projectName: project.name || 'Untitled Project',
+          lastSaved: new Date().toISOString()
+        });
+      } else {
+        setNotification('❌ 加载失败: 项目不存在');
+        setNotificationType('info');
+        setTimeout(() => setNotification(''), 3000);
+      }
+    } catch (error) {
+      setNotification('❌ 加载失败: ' + String(error));
+      setNotificationType('info');
+      setTimeout(() => setNotification(''), 3000);
+    } finally {
+      setIsSaving(false);
+    }
+  }, []);
+
+  // Switch storage mode
+  const handleSwitchStorageMode = useCallback((mode: StorageMode) => {
+    setStorageMode(mode);
+    if (mode === 'cloud') {
+      setLocalFolderName(null);
+    }
+    
+    // Save current state
+    saveSessionState({
+      ...getCurrentSessionState(),
+      storageMode: mode,
+      localFolderName: mode === 'local' ? localFolderName || undefined : undefined
+    });
+  }, [getCurrentSessionState, localFolderName]);
+
+  // Initialize auto-save
+  useEffect(() => {
+    if (autoSaveEnabled) {
+      startAutoSave(getCurrentSessionState, (_state) => {
+        setLastSaveTime(new Date().toLocaleTimeString());
+        
+        // If local mode, also save current file to disk
+        if (storageMode === 'local' && hasLocalDirectory()) {
+          saveLocalFile(activeFile, files[activeFile] || '');
+        }
+      });
+    }
+    
+    return () => {
+      stopAutoSave();
+      stopFileWatcher(); // Stop file watcher on cleanup
+    };
+  }, [autoSaveEnabled, getCurrentSessionState, storageMode, activeFile, files]);
+
+  // Load cloud projects list on mount
+  useEffect(() => {
+    const loadProjects = async () => {
+      const projects = await listAllProjects();
+      setCloudProjectsList(projects);
+    };
+    loadProjects();
+  }, []);
+
+  // Keyboard shortcut for save (Ctrl+S)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+        e.preventDefault();
+        handleSaveSession();
+      }
+    };
+    
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [handleSaveSession]);
 
   // Save API key to localStorage
   const handleSaveApiKey = useCallback(() => {
@@ -429,49 +860,83 @@ export function App(): JSX.Element {
 
   const handleSyncRepo = useCallback(async () => {
     if (!gitHubToken || !gitHubRepo) {
-      setGitStatus('❌ 请先配置 GitHub');
+      setGitStatus('❌ 请先配置 GitHub Token 和仓库名称');
       return;
     }
     setGitLoading(true);
-    setGitStatus('');
+    setGitStatus('正在同步...');
     try {
       const [owner, repo] = gitHubRepo.split('/');
       if (!owner || !repo) {
-        setGitStatus('❌ 仓库格式错误，应为 owner/repo');
+        setGitStatus('❌ 仓库格式错误，应为 owner/repo (例如: TanMingJing/testide)');
+        setGitLoading(false);
         return;
       }
+      
+      console.log(`正在获取仓库: ${owner}/${repo}`);
+      
       // Fetch repo info
       const repoResponse = await fetch(`https://api.github.com/repos/${owner}/${repo}`, {
-        headers: { 'Authorization': `token ${gitHubToken}` }
-      });
-      if (!repoResponse.ok) {
-        if (repoResponse.status === 401) {
-          setGitStatus('❌ Token 无效，请检查 GitHub Token');
-        } else if (repoResponse.status === 404) {
-          setGitStatus('❌ 仓库未找到，请检查仓库名称');
-        } else {
-          setGitStatus(`❌ 同步失败: ${repoResponse.status}`);
+        headers: { 
+          'Authorization': `token ${gitHubToken}`,
+          'Accept': 'application/vnd.github.v3+json'
         }
+      });
+      
+      if (!repoResponse.ok) {
+        const errorData = await repoResponse.json().catch(() => ({}));
+        console.error('GitHub API Error:', repoResponse.status, errorData);
+        
+        if (repoResponse.status === 401) {
+          setGitStatus('❌ Token 无效或已过期，请重新生成 GitHub Token');
+        } else if (repoResponse.status === 403) {
+          setGitStatus('❌ Token 权限不足，请确保 Token 有 repo 权限');
+        } else if (repoResponse.status === 404) {
+          setGitStatus(`❌ 仓库 "${owner}/${repo}" 未找到。请检查：\n1. 仓库名称是否正确\n2. 如果是私有仓库，Token 需要 repo 权限`);
+        } else {
+          setGitStatus(`❌ GitHub API 错误: ${repoResponse.status} - ${errorData.message || '未知错误'}`);
+        }
+        setGitLoading(false);
         return;
       }
+      
       const info = await repoResponse.json();
+      console.log('仓库信息:', info);
+      
       setRepoInfo({
         description: info.description,
         language: info.language,
         stargazers_count: info.stargazers_count
       });
-      // Fetch files
+      
+      // Fetch files from root directory
+      console.log('正在获取文件列表...');
       const filesResponse = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents`, {
-        headers: { 'Authorization': `token ${gitHubToken}` }
+        headers: { 
+          'Authorization': `token ${gitHubToken}`,
+          'Accept': 'application/vnd.github.v3+json'
+        }
       });
+      
       if (filesResponse.ok) {
         const files = await filesResponse.json();
+        console.log('获取文件成功:', files);
         setRepoFiles(files);
-        setGitStatus(`✓ 同步成功! 找到 ${files.length} 个文件`);
+        setGitStatus(`✓ 同步成功! 找到 ${files.length} 个文件/文件夹`);
         setTimeout(() => setGitStatus(''), 3000);
+      } else if (filesResponse.status === 404) {
+        // 404 might mean repository is empty or no files in root
+        console.log('Repository contents not found (404)');
+        setRepoFiles([]);
+        setGitStatus('⚠️ 仓库根目录无文件，或仓库为空');
+      } else {
+        const errorData = await filesResponse.json().catch(() => ({}));
+        console.error('获取文件列表失败:', filesResponse.status, errorData);
+        setGitStatus(`❌ 获取文件列表失败: ${errorData.message || filesResponse.status}`);
       }
     } catch (error) {
-      setGitStatus(`❌ 同步失败: ${String(error).slice(0, 50)}`);
+      console.error('同步错误:', error);
+      setGitStatus(`❌ 网络错误: ${String(error).slice(0, 100)}`);
     } finally {
       setGitLoading(false);
     }
@@ -479,7 +944,7 @@ export function App(): JSX.Element {
 
   const handleCommitAndPush = useCallback(async () => {
     if (!gitHubToken || !gitHubRepo) {
-      setGitStatus('❌ 请先配置 GitHub');
+      setGitStatus('❌ 请先配置 GitHub Token 和仓库');
       return;
     }
     if (!commitMessage.trim()) {
@@ -487,20 +952,120 @@ export function App(): JSX.Element {
       setTimeout(() => setGitStatus(''), 3000);
       return;
     }
+    
+    if (Object.keys(files).length === 0) {
+      setGitStatus('❌ 没有文件可以推送');
+      return;
+    }
+    
     setGitLoading(true);
-    setGitStatus('正在提交和推送...');
+    setGitStatus('正在推送文件到 GitHub...');
+    
     try {
-      // Simulated commit (actual implementation would push to GitHub)
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      setGitStatus('✓ 提交和推送成功!');
-      setCommitMessage('');
-      setTimeout(() => setGitStatus(''), 3000);
+      const [owner, repo] = gitHubRepo.split('/');
+      if (!owner || !repo) {
+        setGitStatus('❌ 仓库格式错误');
+        setGitLoading(false);
+        return;
+      }
+      
+      let successCount = 0;
+      let errorCount = 0;
+      const errors: string[] = [];
+      
+      // Push each file to GitHub
+      for (const [filePath, content] of Object.entries(files)) {
+        try {
+          console.log(`正在推送文件: ${filePath}`);
+          
+          // First, try to get the existing file SHA (for update)
+          let sha: string | null = null;
+          try {
+            const getResponse = await fetch(
+              `https://api.github.com/repos/${owner}/${repo}/contents/${filePath}`,
+              {
+                headers: {
+                  'Authorization': `token ${gitHubToken}`,
+                  'Accept': 'application/vnd.github.v3+json'
+                }
+              }
+            );
+            if (getResponse.ok) {
+              const existingFile = await getResponse.json();
+              sha = existingFile.sha;
+              console.log(`文件已存在，SHA: ${sha}`);
+            }
+          } catch (e) {
+            // File doesn't exist yet, that's ok
+          }
+          
+          // Create or update file
+          const putBody = {
+            message: commitMessage,
+            content: btoa(unescape(encodeURIComponent(content))), // Properly encode UTF-8 to Base64
+            ...(sha ? { sha } : {}) // Include SHA if updating
+          };
+          
+          const putResponse = await fetch(
+            `https://api.github.com/repos/${owner}/${repo}/contents/${filePath}`,
+            {
+              method: 'PUT',
+              headers: {
+                'Authorization': `token ${gitHubToken}`,
+                'Accept': 'application/vnd.github.v3+json',
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify(putBody)
+            }
+          );
+          
+          if (putResponse.ok) {
+            const result = await putResponse.json();
+            console.log(`✓ ${filePath} 推送成功`);
+            successCount++;
+          } else {
+            const errorData = await putResponse.json().catch(() => ({}));
+            let errorMsg = `${filePath}: ${errorData.message || putResponse.status}`;
+            
+            // Provide helpful error messages for common issues
+            if (putResponse.status === 403) {
+              if (errorData.message?.includes('Resource not accessible')) {
+                errorMsg = `${filePath}: Token 权限不足 - 需要 'repo' 权限范围`;
+              }
+            }
+            
+            errors.push(errorMsg);
+            errorCount++;
+            console.error(`❌ ${filePath} 推送失败:`, errorData);
+          }
+        } catch (error) {
+          errors.push(`${filePath}: ${String(error).slice(0, 50)}`);
+          errorCount++;
+        }
+      }
+      
+      // Set final status
+      if (successCount > 0 && errorCount === 0) {
+        setGitStatus(`✓ 推送成功! 共上传 ${successCount} 个文件`);
+        setCommitMessage('');
+        setTimeout(() => setGitStatus(''), 3000);
+      } else if (successCount > 0 && errorCount > 0) {
+        setGitStatus(`⚠️ 部分推送成功: ${successCount} 个成功, ${errorCount} 个失败\n${errors.slice(0, 3).join('\n')}`);
+      } else {
+        let finalError = errors.join('\n');
+        if (finalError.includes('Token 权限不足')) {
+          finalError += '\n\n请在 GitHub 重新创建 Token，并选中 "repo" 权限范围';
+        }
+        setGitStatus(`❌ 推送失败: ${finalError}`);
+      }
+      
     } catch (error) {
-      setGitStatus(`❌ 失败: ${String(error)}`);
+      console.error('推送错误:', error);
+      setGitStatus(`❌ 推送失败: ${String(error).slice(0, 100)}`);
     } finally {
       setGitLoading(false);
     }
-  }, [gitHubToken, gitHubRepo, commitMessage]);
+  }, [gitHubToken, gitHubRepo, commitMessage, files]);
 
   // Resize handlers for sidebar
   const handleSidebarDragStart = useCallback((e: React.MouseEvent) => {
@@ -700,6 +1265,178 @@ export function App(): JSX.Element {
     document.removeEventListener('mouseup', handleTerminalOutputDragEnd as any);
   }, []);
 
+  // Real-time error detection
+  const detectProblems = useCallback(async (code: string, fileName: string) => {
+    const newProblems: Problem[] = [];
+    const newErrorLines = new Set<number>();
+    
+    try {
+      const core = await loadZhCodeCore();
+      
+      // Try to tokenize
+      try {
+        const tokenizer = new core.Tokenizer(code);
+        const tokens = tokenizer.tokenize();
+        
+        // Try to parse
+        try {
+          const parser = new core.Parser(tokens);
+          parser.parse();
+        } catch (parseError: unknown) {
+          const errorMsg = String(parseError);
+          // Extract line number from error message
+          const lineMatch = errorMsg.match(/line\s*(\d+)/i) || errorMsg.match(/第\s*(\d+)\s*行/);
+          const line = lineMatch ? parseInt(lineMatch[1], 10) : 1;
+          
+          newProblems.push({
+            id: `parse-${Date.now()}`,
+            file: fileName,
+            line,
+            column: 1,
+            message: errorMsg.replace(/^Error:\s*/i, ''),
+            severity: 'error',
+            code: 'PARSE_ERROR'
+          });
+          newErrorLines.add(line);
+        }
+      } catch (tokenError: unknown) {
+        const errorMsg = String(tokenError);
+        const lineMatch = errorMsg.match(/line\s*(\d+)/i) || errorMsg.match(/第\s*(\d+)\s*行/);
+        const line = lineMatch ? parseInt(lineMatch[1], 10) : 1;
+        
+        newProblems.push({
+          id: `token-${Date.now()}`,
+          file: fileName,
+          line,
+          column: 1,
+          message: errorMsg.replace(/^Error:\s*/i, ''),
+          severity: 'error',
+          code: 'TOKEN_ERROR'
+        });
+        newErrorLines.add(line);
+      }
+    } catch {
+      // ZhCode core not loaded, do basic syntax checks
+    }
+    
+    // Additional syntax checks
+    const lines = code.split('\n');
+    let braceCount = 0;
+    let parenCount = 0;
+    let bracketCount = 0;
+    
+    lines.forEach((line, index) => {
+      const lineNum = index + 1;
+      const trimmed = line.trim();
+      
+      // Count braces
+      for (const char of line) {
+        if (char === '{') braceCount++;
+        if (char === '}') braceCount--;
+        if (char === '(') parenCount++;
+        if (char === ')') parenCount--;
+        if (char === '[') bracketCount++;
+        if (char === ']') bracketCount--;
+      }
+      
+      // Check for unmatched quotes on a line
+      const singleQuotes = (line.match(/'/g) || []).length;
+      const doubleQuotes = (line.match(/"/g) || []).length;
+      
+      if (singleQuotes % 2 !== 0 && !newErrorLines.has(lineNum)) {
+        newProblems.push({
+          id: `quote-single-${lineNum}`,
+          file: fileName,
+          line: lineNum,
+          column: 1,
+          message: '未闭合的单引号',
+          severity: 'warning',
+          code: 'UNCLOSED_QUOTE'
+        });
+      }
+      
+      if (doubleQuotes % 2 !== 0 && !newErrorLines.has(lineNum)) {
+        newProblems.push({
+          id: `quote-double-${lineNum}`,
+          file: fileName,
+          line: lineNum,
+          column: 1,
+          message: '未闭合的双引号',
+          severity: 'warning',
+          code: 'UNCLOSED_QUOTE'
+        });
+      }
+      
+      // Check for TODO/FIXME comments
+      if (trimmed.includes('TODO') || trimmed.includes('待办')) {
+        newProblems.push({
+          id: `todo-${lineNum}`,
+          file: fileName,
+          line: lineNum,
+          column: 1,
+          message: '发现 TODO 注释',
+          severity: 'info',
+          code: 'TODO'
+        });
+      }
+      
+      if (trimmed.includes('FIXME') || trimmed.includes('修复')) {
+        newProblems.push({
+          id: `fixme-${lineNum}`,
+          file: fileName,
+          line: lineNum,
+          column: 1,
+          message: '发现 FIXME 注释',
+          severity: 'warning',
+          code: 'FIXME'
+        });
+      }
+    });
+    
+    // Check for unmatched braces at end
+    if (braceCount !== 0) {
+      newProblems.push({
+        id: `brace-${Date.now()}`,
+        file: fileName,
+        line: lines.length,
+        column: 1,
+        message: braceCount > 0 ? `缺少 ${braceCount} 个右花括号 }` : `多余 ${-braceCount} 个右花括号 }`,
+        severity: 'error',
+        code: 'UNMATCHED_BRACE'
+      });
+      newErrorLines.add(lines.length);
+    }
+    
+    if (parenCount !== 0) {
+      newProblems.push({
+        id: `paren-${Date.now()}`,
+        file: fileName,
+        line: lines.length,
+        column: 1,
+        message: parenCount > 0 ? `缺少 ${parenCount} 个右括号 )` : `多余 ${-parenCount} 个右括号 )`,
+        severity: 'error',
+        code: 'UNMATCHED_PAREN'
+      });
+      newErrorLines.add(lines.length);
+    }
+    
+    if (bracketCount !== 0) {
+      newProblems.push({
+        id: `bracket-${Date.now()}`,
+        file: fileName,
+        line: lines.length,
+        column: 1,
+        message: bracketCount > 0 ? `缺少 ${bracketCount} 个右方括号 ]` : `多余 ${-bracketCount} 个右方括号 ]`,
+        severity: 'error',
+        code: 'UNMATCHED_BRACKET'
+      });
+      newErrorLines.add(lines.length);
+    }
+    
+    setProblems(newProblems);
+    setErrorLines(newErrorLines);
+  }, []);
+
   // Compile and execute code
   const handleCompileAndRun = useCallback(async () => {
     try {
@@ -708,6 +1445,9 @@ export function App(): JSX.Element {
       
       const core = await loadZhCodeCore();
       const currentCode = files[activeFile];
+      
+      // Detect problems (compile errors, warnings, etc.)
+      await detectProblems(currentCode, activeFile);
       
       // Tokenize
       const tokenizer = new core.Tokenizer(currentCode);
@@ -748,7 +1488,7 @@ export function App(): JSX.Element {
       setError(`编译错误: ${String(e)}`);
       setOutput('');
     }
-  }, [files, activeFile]);
+  }, [files, activeFile, detectProblems]);
 
   // Auto-compile on code change (debounced)
   const handleCodeChange = useCallback((value: string | undefined) => {
@@ -768,16 +1508,608 @@ export function App(): JSX.Element {
     newFiles[activeFile] = value;
     setFiles(newFiles);
     
-    // Clear previous timeout
+    // Auto-save to cloud project if one is selected
+    if (currentCloudProjectId && storageMode === 'cloud') {
+      // Debounce auto-save (2 seconds after last change)
+      if (autoSaveTimeoutRef.current) {
+        clearTimeout(autoSaveTimeoutRef.current);
+      }
+      autoSaveTimeoutRef.current = setTimeout(async () => {
+        const saved = await saveProject(currentCloudProjectId, newFiles);
+        if (saved) {
+          setLastSaveTime(new Date().toLocaleTimeString());
+          console.log('Auto-saved to cloud project');
+        }
+      }, 2000);
+    }
+    
+    // Auto-save to local filesystem if in local mode
+    if (storageMode === 'local' && hasLocalDirectory()) {
+      // Debounce local save (1 second after last change)
+      if (autoSaveTimeoutRef.current) {
+        clearTimeout(autoSaveTimeoutRef.current);
+      }
+      autoSaveTimeoutRef.current = setTimeout(async () => {
+        await syncFileToLocal(activeFile, value);
+        updateWatcherState(newFiles); // Update watcher so it doesn't detect our own change
+        setLastSaveTime(new Date().toLocaleTimeString());
+        console.log('Auto-saved to local:', activeFile);
+      }, 1000);
+    }
+    
+    // Clear previous timeouts
     if (compileTimeoutRef.current) {
       clearTimeout(compileTimeoutRef.current);
     }
+    if (problemsTimeoutRef.current) {
+      clearTimeout(problemsTimeoutRef.current);
+    }
     
-    // Set new timeout for auto-compile
+    // Real-time error detection (faster, 150ms)
+    problemsTimeoutRef.current = setTimeout(() => {
+      detectProblems(value, activeFile);
+    }, 150);
+    
+    // Set new timeout for auto-compile (slower, 500ms)
     compileTimeoutRef.current = setTimeout(() => {
       handleCompileAndRun();
     }, 500);
-  }, [files, activeFile, handleCompileAndRun, undoStack, redoStack]);
+  }, [files, activeFile, handleCompileAndRun, undoStack, redoStack, detectProblems, currentCloudProjectId, storageMode]);
+
+  // Get cursor position for autocomplete
+  const getCursorCoordinates = useCallback((textarea: HTMLTextAreaElement, position: number) => {
+    const text = textarea.value.substring(0, position);
+    const lines = text.split('\n');
+    const currentLine = lines.length;
+    const currentColumn = lines[lines.length - 1].length;
+    
+    // Calculate pixel position
+    const lineHeight = 14 * 1.6; // font-size * line-height
+    const charWidth = 8.4; // approximate character width for monospace
+    
+    const rect = textarea.getBoundingClientRect();
+    const x = rect.left + 50 + currentColumn * charWidth; // 50px for line numbers
+    const y = rect.top + currentLine * lineHeight - textarea.scrollTop + 20;
+    
+    return { x: Math.min(x, window.innerWidth - 300), y: Math.min(y, window.innerHeight - 200) };
+  }, []);
+
+  // Extract current word being typed
+  const getCurrentWord = useCallback((text: string, position: number) => {
+    const beforeCursor = text.substring(0, position);
+    
+    // Check if we're inside a string (quote context, including Chinese quotes)
+    // Chinese quotes: \u201c = "  \u201d = "  \u2018 = '  \u2019 = '
+    let inString = false;
+    let stringChar = '';
+    for (let i = 0; i < beforeCursor.length; i++) {
+      const char = beforeCursor[i];
+      // Check for English quotes and Chinese quotes using Unicode
+      const isQuote = (char === '"' || char === "'" || char === '`' || 
+                       char === '\u201c' || char === '\u201d' || 
+                       char === '\u2018' || char === '\u2019');
+      
+      if (isQuote && (i === 0 || beforeCursor[i - 1] !== '\\')) {
+        if (!inString) {
+          inString = true;
+          stringChar = char;
+        } else if (char === stringChar || 
+                  (stringChar === '\u201c' && char === '\u201d') || 
+                  (stringChar === '\u201d' && char === '\u201c') ||
+                  (stringChar === '\u2018' && char === '\u2019') ||
+                  (stringChar === '\u2019' && char === '\u2018')) {
+          inString = false;
+        }
+      }
+    }
+    
+    // If in string, extract from the quote
+    if (inString) {
+      const lastQuoteIndex = beforeCursor.lastIndexOf(stringChar);
+      if (lastQuoteIndex !== -1) {
+        return beforeCursor.substring(lastQuoteIndex + 1);
+      }
+    }
+    
+    // Normal word extraction (handles both ASCII and Chinese)
+    const words = beforeCursor.split(/[\s()[\]{},;:=+\-*/\n"|'\u201c\u201d\u2018\u2019]/);
+    return words[words.length - 1] || '';
+  }, []);
+
+  // Detect context (inside string or not, including Chinese quotes)
+  const getContextInfo = useCallback((text: string, position: number) => {
+    const beforeCursor = text.substring(0, position);
+    let inString = false;
+    let stringChar = '';
+    
+    for (let i = 0; i < beforeCursor.length; i++) {
+      const char = beforeCursor[i];
+      // Check for English quotes and Chinese quotes using Unicode
+      // \u201c = "  \u201d = "  \u2018 = '  \u2019 = '
+      const isQuote = (char === '"' || char === "'" || char === '`' || 
+                       char === '\u201c' || char === '\u201d' || 
+                       char === '\u2018' || char === '\u2019');
+      
+      if (isQuote && (i === 0 || beforeCursor[i - 1] !== '\\')) {
+        if (!inString) {
+          inString = true;
+          stringChar = char;
+        } else if (char === stringChar || 
+                  (stringChar === '\u201c' && char === '\u201d') || 
+                  (stringChar === '\u201d' && char === '\u201c') ||
+                  (stringChar === '\u2018' && char === '\u2019') ||
+                  (stringChar === '\u2019' && char === '\u2018')) {
+          inString = false;
+        }
+      }
+    }
+    
+    return { inString, stringChar };
+  }, []);
+
+  // Fetch AI autocomplete suggestions
+  const fetchAutocompleteSuggestions = useCallback(async (code: string, position: number) => {
+    const currentWord = getCurrentWord(code, position);
+    const context = getContextInfo(code, position);
+    
+    if (currentWord.length < 1) {
+      setShowAutocomplete(false);
+      return;
+    }
+    
+    setAutocompleteFilterText(currentWord);
+    
+    // First, generate local suggestions (pass context info)
+    const localSuggestions = generateSuggestions(currentWord, {}, context);
+    
+    // Then try to get AI suggestions from backend
+    try {
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3002';
+      const response = await fetch(`${API_URL}/api/autocomplete`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code, position, context: currentWord })
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        if (data.suggestions && data.suggestions.length > 0) {
+          const aiSuggestions: Suggestion[] = data.suggestions.map((s: { label: string; kind: string; insertText: string; detail?: string }, i: number) => ({
+            id: `ai-${i}`,
+            label: s.label,
+            kind: (s.kind?.toLowerCase() === 'keyword' ? 'keyword' : 'function') as Suggestion['kind'],
+            detail: s.detail || 'AI 建议',
+            sortText: `0-${s.label}`
+          }));
+          
+          // Merge AI suggestions with local, removing duplicates
+          const mergedSuggestions = [...aiSuggestions];
+          localSuggestions.forEach(local => {
+            if (!mergedSuggestions.find(ai => ai.label === local.label)) {
+              mergedSuggestions.push(local);
+            }
+          });
+          
+          setAutocompleteSuggestions(mergedSuggestions.slice(0, 10));
+        } else {
+          setAutocompleteSuggestions(localSuggestions.slice(0, 10));
+        }
+      } else {
+        setAutocompleteSuggestions(localSuggestions.slice(0, 10));
+      }
+    } catch {
+      // Fallback to local suggestions if API fails
+      setAutocompleteSuggestions(localSuggestions.slice(0, 10));
+    }
+    
+    if (textareaRef.current) {
+      const coords = getCursorCoordinates(textareaRef.current, position);
+      setAutocompletePosition(coords);
+    }
+    
+    setAutocompleteSelectedIndex(0);
+    setShowAutocomplete(true);
+  }, [getCurrentWord, getCursorCoordinates, getContextInfo]);
+
+  // Handle autocomplete selection
+  const handleAutocompleteSelect = useCallback((suggestion: Suggestion) => {
+    if (!textareaRef.current) return;
+    
+    const textarea = textareaRef.current;
+    const text = textarea.value;
+    const position = textarea.selectionStart;
+    const currentWord = getCurrentWord(text, position);
+    
+    // Replace the current word with the selected suggestion
+    const beforeWord = text.substring(0, position - currentWord.length);
+    const afterCursor = text.substring(position);
+    const newText = beforeWord + suggestion.label + afterCursor;
+    const newPosition = beforeWord.length + suggestion.label.length;
+    
+    // Update the code
+    handleCodeChange(newText);
+    
+    // Reset cursor position after React re-render
+    setTimeout(() => {
+      if (textareaRef.current) {
+        textareaRef.current.selectionStart = newPosition;
+        textareaRef.current.selectionEnd = newPosition;
+        textareaRef.current.focus();
+      }
+    }, 0);
+    
+    setShowAutocomplete(false);
+  }, [getCurrentWord, handleCodeChange]);
+
+  // Handle keyboard events for autocomplete
+  // Auto-pair brackets mapping
+  const bracketPairs: Record<string, string> = {
+    '{': '}',
+    '(': ')',
+    '[': ']',
+    '"': '"',
+    "'": "'",
+    '`': '`',
+    // 中文引号
+    '\u201c': '\u201d',  // " → "
+    '\u2018': '\u2019'   // ' → '
+  };
+
+  // Format code function
+  const formatCode = useCallback((code: string): string => {
+    const lines = code.split('\n');
+    let indentLevel = 0;
+    const indentStr = '  '; // 2 spaces
+    
+    const formattedLines = lines.map(line => {
+      const trimmed = line.trim();
+      if (!trimmed) return '';
+      
+      // Decrease indent for closing braces
+      if (trimmed.startsWith('}') || trimmed.startsWith(')') || trimmed.startsWith(']')) {
+        indentLevel = Math.max(0, indentLevel - 1);
+      }
+      
+      const formatted = indentStr.repeat(indentLevel) + trimmed;
+      
+      // Increase indent for opening braces
+      const openCount = (trimmed.match(/[{(\[]/g) || []).length;
+      const closeCount = (trimmed.match(/[})\]]/g) || []).length;
+      indentLevel += openCount - closeCount;
+      indentLevel = Math.max(0, indentLevel);
+      
+      return formatted;
+    });
+    
+    return formattedLines.join('\n');
+  }, []);
+
+  // Apply theme on mount and when theme changes
+  React.useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('zhcode_theme', theme);
+  }, [theme]);
+
+  // Handle format code command
+  // Theme toggle function
+  const handleThemeToggle = useCallback(() => {
+    const newTheme = theme === 'dark' ? 'light' : 'dark';
+    setTheme(newTheme);
+    localStorage.setItem('zhcode_theme', newTheme);
+    // Apply theme to document
+    document.documentElement.setAttribute('data-theme', newTheme);
+    if (newTheme === 'dark') {
+      document.documentElement.style.filter = 'invert(0)';
+    } else {
+      document.documentElement.style.backgroundColor = '#f5f5f5';
+      document.documentElement.style.color = '#333';
+    }
+  }, [theme]);
+
+  // Comment/uncomment lines
+  const handleToggleComment = useCallback(() => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+    
+    const { selectionStart, selectionEnd, value } = textarea;
+    const lines = value.split('\n');
+    let currentPos = 0;
+    let startLine = 0;
+    let endLine = 0;
+    
+    for (let i = 0; i < lines.length; i++) {
+      currentPos += lines[i].length + 1;
+      if (currentPos > selectionStart && startLine === 0) startLine = i;
+      if (currentPos >= selectionEnd) {
+        endLine = i;
+        break;
+      }
+    }
+    
+    const selectedLines = lines.slice(startLine, endLine + 1);
+    const allCommented = selectedLines.every(line => line.trim().startsWith('//'));
+    
+    const newLines = selectedLines.map(line => {
+      const trimmed = line.trim();
+      if (allCommented) {
+        return line.replace(/^\s*\/\/\s?/, '');
+      } else {
+        return line.replace(/^(\s*)/, '$1// ');
+      }
+    });
+    
+    const newValue = [
+      ...lines.slice(0, startLine),
+      ...newLines,
+      ...lines.slice(endLine + 1)
+    ].join('\n');
+    
+    handleCodeChange(newValue);
+  }, [handleCodeChange]);
+
+  // Find/Replace functionality
+  const handleOpenFind = useCallback(() => {
+    const text = prompt('搜索文本:');
+    if (text) {
+      const findResult = (files[activeFile] || '').indexOf(text);
+      if (findResult >= 0) {
+        if (textareaRef.current) {
+          textareaRef.current.setSelectionRange(findResult, findResult + text.length);
+          textareaRef.current.focus();
+        }
+        setNotification(`✓ 找到 "${text}"`);
+        setNotificationType('success');
+      } else {
+        setNotification(`✗ 未找到 "${text}"`);
+        setNotificationType('error');
+      }
+    }
+  }, [files, activeFile]);
+
+  const handleFormatCode = useCallback(() => {
+    const code = files[activeFile] || '';
+    const formatted = formatCode(code);
+    handleCodeChange(formatted);
+    setNotification('✨ 代码已格式化');
+    setNotificationType('success');
+    setTimeout(() => setNotification(''), 2000);
+  }, [files, activeFile, formatCode, handleCodeChange]);
+
+  const handleEditorKeyDown = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    const textarea = e.currentTarget;
+    const { selectionStart, selectionEnd, value } = textarea;
+    
+    // Ctrl+Shift+F to format code
+    if (e.ctrlKey && e.shiftKey && (e.key === 'f' || e.key === 'F')) {
+      e.preventDefault();
+      handleFormatCode();
+      return;
+    }
+
+    // Ctrl+/ or Cmd+/ to toggle comment
+    if ((e.ctrlKey || e.metaKey) && e.key === '/') {
+      e.preventDefault();
+      handleToggleComment();
+      return;
+    }
+
+    // Ctrl+F or Cmd+F to open find
+    if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+      e.preventDefault();
+      handleOpenFind();
+      return;
+    }
+
+    // Ctrl+L or Cmd+L to format code (alternative)
+    if ((e.ctrlKey || e.metaKey) && e.key === 'l') {
+      e.preventDefault();
+      handleFormatCode();
+      return;
+    }
+    
+    // Auto-pair brackets
+    const closingBracket = bracketPairs[e.key];
+    if (closingBracket) {
+      e.preventDefault();
+      const selectedText = value.substring(selectionStart, selectionEnd);
+      const beforeCursor = value.substring(0, selectionStart);
+      const afterCursor = value.substring(selectionEnd);
+      
+      let newText: string;
+      let newCursorPos: number;
+      
+      if (selectedText) {
+        // Wrap selected text with brackets
+        newText = beforeCursor + e.key + selectedText + closingBracket + afterCursor;
+        newCursorPos = selectionStart + 1 + selectedText.length + 1;
+      } else {
+        // Insert both brackets and place cursor in between
+        newText = beforeCursor + e.key + closingBracket + afterCursor;
+        newCursorPos = selectionStart + 1;
+      }
+      
+      handleCodeChange(newText);
+      
+      // Set cursor position after React re-render
+      setTimeout(() => {
+        if (textareaRef.current) {
+          textareaRef.current.selectionStart = newCursorPos;
+          textareaRef.current.selectionEnd = newCursorPos;
+        }
+      }, 0);
+      return;
+    }
+    
+    // Handle Enter key for auto-indent
+    if (e.key === 'Enter') {
+      const beforeCursor = value.substring(0, selectionStart);
+      const afterCursor = value.substring(selectionEnd);
+      const currentLine = beforeCursor.split('\n').pop() || '';
+      const indent = currentLine.match(/^(\s*)/)?.[1] || '';
+      const lastChar = beforeCursor.trim().slice(-1);
+      const nextChar = afterCursor.trim().charAt(0);
+      
+      // Add extra indent after opening brace
+      if (lastChar === '{' || lastChar === '(' || lastChar === '[') {
+        e.preventDefault();
+        let newText: string;
+        let newCursorPos: number;
+        
+        if (nextChar === '}' || nextChar === ')' || nextChar === ']') {
+          // Cursor between braces: add new line with indent and closing brace on next line
+          newText = beforeCursor + '\n' + indent + '  ' + '\n' + indent + afterCursor;
+          newCursorPos = selectionStart + 1 + indent.length + 2;
+        } else {
+          newText = beforeCursor + '\n' + indent + '  ' + afterCursor;
+          newCursorPos = selectionStart + 1 + indent.length + 2;
+        }
+        
+        handleCodeChange(newText);
+        setTimeout(() => {
+          if (textareaRef.current) {
+            textareaRef.current.selectionStart = newCursorPos;
+            textareaRef.current.selectionEnd = newCursorPos;
+          }
+        }, 0);
+        return;
+      }
+      
+      // Keep same indent level
+      if (indent) {
+        e.preventDefault();
+        const newText = beforeCursor + '\n' + indent + afterCursor;
+        const newCursorPos = selectionStart + 1 + indent.length;
+        
+        handleCodeChange(newText);
+        setTimeout(() => {
+          if (textareaRef.current) {
+            textareaRef.current.selectionStart = newCursorPos;
+            textareaRef.current.selectionEnd = newCursorPos;
+          }
+        }, 0);
+        return;
+      }
+    }
+    
+    // Handle Backspace - delete matching bracket if empty
+    if (e.key === 'Backspace' && selectionStart === selectionEnd && selectionStart > 0) {
+      const charBefore = value.charAt(selectionStart - 1);
+      const charAfter = value.charAt(selectionStart);
+      
+      if (bracketPairs[charBefore] === charAfter) {
+        e.preventDefault();
+        const newText = value.substring(0, selectionStart - 1) + value.substring(selectionStart + 1);
+        handleCodeChange(newText);
+        setTimeout(() => {
+          if (textareaRef.current) {
+            textareaRef.current.selectionStart = selectionStart - 1;
+            textareaRef.current.selectionEnd = selectionStart - 1;
+          }
+        }, 0);
+        return;
+      }
+    }
+    
+    // Handle Tab for indentation
+    if (e.key === 'Tab' && !showAutocomplete) {
+      e.preventDefault();
+      const beforeCursor = value.substring(0, selectionStart);
+      const afterCursor = value.substring(selectionEnd);
+      
+      if (e.shiftKey) {
+        // Remove indent
+        const currentLine = beforeCursor.split('\n').pop() || '';
+        if (currentLine.startsWith('  ')) {
+          const lineStart = beforeCursor.lastIndexOf('\n') + 1;
+          const newText = value.substring(0, lineStart) + value.substring(lineStart + 2);
+          handleCodeChange(newText);
+          setTimeout(() => {
+            if (textareaRef.current) {
+              textareaRef.current.selectionStart = Math.max(lineStart, selectionStart - 2);
+              textareaRef.current.selectionEnd = Math.max(lineStart, selectionStart - 2);
+            }
+          }, 0);
+        }
+      } else {
+        // Add indent
+        const newText = beforeCursor + '  ' + afterCursor;
+        handleCodeChange(newText);
+        setTimeout(() => {
+          if (textareaRef.current) {
+            textareaRef.current.selectionStart = selectionStart + 2;
+            textareaRef.current.selectionEnd = selectionStart + 2;
+          }
+        }, 0);
+      }
+      return;
+    }
+    
+    // Ctrl+Space or Ctrl+. to trigger autocomplete (Ctrl+Space may be captured by IME)
+    if (e.ctrlKey && (e.key === ' ' || e.code === 'Space' || e.key === '.' || e.key === 'Period')) {
+      e.preventDefault();
+      e.stopPropagation();
+      console.log('Autocomplete triggered!', textarea.selectionStart);
+      fetchAutocompleteSuggestions(textarea.value, textarea.selectionStart);
+      return;
+    }
+    
+    // Alt+/ as another alternative (common in many IDEs)
+    if (e.altKey && e.key === '/') {
+      e.preventDefault();
+      e.stopPropagation();
+      fetchAutocompleteSuggestions(textarea.value, textarea.selectionStart);
+      return;
+    }
+    
+    // When autocomplete is showing
+    if (showAutocomplete && autocompleteSuggestions.length > 0) {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        setAutocompleteSelectedIndex(prev => 
+          Math.min(prev + 1, autocompleteSuggestions.length - 1)
+        );
+        return;
+      }
+      
+      if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        setAutocompleteSelectedIndex(prev => Math.max(prev - 1, 0));
+        return;
+      }
+      
+      if (e.key === 'Enter' || e.key === 'Tab') {
+        e.preventDefault();
+        handleAutocompleteSelect(autocompleteSuggestions[autocompleteSelectedIndex]);
+        return;
+      }
+      
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        setShowAutocomplete(false);
+        return;
+      }
+    }
+  }, [showAutocomplete, autocompleteSuggestions, autocompleteSelectedIndex, fetchAutocompleteSuggestions, handleAutocompleteSelect, handleCodeChange, handleFormatCode, handleToggleComment, handleOpenFind, files, activeFile]);
+
+  // Trigger autocomplete on input
+  const handleEditorInput = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const textarea = e.target;
+    const value = textarea.value;
+    const position = textarea.selectionStart;
+    
+    // Update code
+    handleCodeChange(value);
+    
+    // Clear previous autocomplete timeout
+    if (autocompleteTimeoutRef.current) {
+      clearTimeout(autocompleteTimeoutRef.current);
+    }
+    
+    // Debounce autocomplete trigger
+    autocompleteTimeoutRef.current = setTimeout(() => {
+      fetchAutocompleteSuggestions(value, position);
+    }, 200);
+  }, [handleCodeChange, fetchAutocompleteSuggestions]);
 
   // Handle undo
   const handleUndo = useCallback(() => {
@@ -855,22 +2187,40 @@ export function App(): JSX.Element {
   }, [files, activeFile, undoStack, redoStack, handleCompileAndRun]);
 
   // Handle file creation
-  const handleCreateFile = useCallback(() => {
+  const handleCreateFile = useCallback(async () => {
     if (!newFileName.trim()) return;
-    if (newFileName in files) {
+    
+    // Add .txt extension if no extension is provided
+    let fileName = newFileName.trim();
+    if (!fileName.includes('.')) {
+      fileName = fileName + '.txt';
+    }
+    
+    if (fileName in files) {
       setError('文件已存在');
       return;
     }
     
+    const fileContent = '# 新文件\n';
     const newFiles = { ...files };
-    newFiles[newFileName] = '# 新文件\n';
+    newFiles[fileName] = fileContent;
     setFiles(newFiles);
-    setActiveFile(newFileName);
+    setActiveFile(fileName);
     setNewFileName('');
-  }, [files, newFileName]);
+    
+    // If in local mode, sync to local filesystem
+    if (storageMode === 'local' && hasLocalDirectory()) {
+      const success = await syncFileToLocal(fileName, fileContent);
+      if (success) {
+        setNotification(`✅ 文件已创建: ${fileName}`);
+        setNotificationType('success');
+        setTimeout(() => setNotification(''), 2000);
+      }
+    }
+  }, [files, newFileName, storageMode]);
 
   // Handle file deletion
-  const handleDeleteFile = useCallback((fileName: string) => {
+  const handleDeleteFile = useCallback(async (fileName: string) => {
     if (Object.keys(files).length === 1) {
       setError('必须保留至少一个文件');
       return;
@@ -883,7 +2233,17 @@ export function App(): JSX.Element {
     if (activeFile === fileName) {
       setActiveFile(Object.keys(newFiles)[0]);
     }
-  }, [files, activeFile]);
+    
+    // If in local mode, sync deletion to local filesystem
+    if (storageMode === 'local' && hasLocalDirectory()) {
+      const success = await syncDeleteFileFromLocal(fileName);
+      if (success) {
+        setNotification(`🗑️ 文件已删除: ${fileName}`);
+        setNotificationType('info');
+        setTimeout(() => setNotification(''), 2000);
+      }
+    }
+  }, [files, activeFile, storageMode]);
 
   // Handle file rename
   const handleRenameFile = useCallback((oldFileName: string) => {
@@ -981,85 +2341,6 @@ export function App(): JSX.Element {
       console.error('Failed to log operation:', e);
     }
   }, [files, activeFile, aiLanguage, loadAIHistory]);
-
-  // Load cloud projects
-  const loadCloudProjects = useCallback(async () => {
-    setCloudProjectsLoading(true);
-    try {
-      const userId = localStorage.getItem('zhcode_user_id') || 'default_user';
-      const projects = await getUserProjects(userId);
-      setCloudProjects(projects);
-    } catch (e) {
-      console.error('Failed to load cloud projects:', e);
-    } finally {
-      setCloudProjectsLoading(false);
-    }
-  }, []);
-
-  // Save current project to cloud
-  const handleSaveToCloud = useCallback(async () => {
-    if (!projectName.trim()) {
-      setError('请输入项目名称');
-      return;
-    }
-
-    try {
-      const userId = localStorage.getItem('zhcode_user_id') || 'default_user';
-      
-      const project: Omit<ZhCodeProject, '$id' | 'createdAt' | 'updatedAt'> = {
-        userId,
-        projectName: projectName.trim(),
-        description: projectDescription.trim(),
-        files,
-        mainFile: activeFile,
-        language: aiLanguage,
-        tags: ['zhcode'],
-        isPublic: false,
-      };
-
-      const saved = await saveProjectToCloud(project);
-      if (saved) {
-        setError('✅ 项目已保存到云端');
-        setProjectName('');
-        setProjectDescription('');
-        await loadCloudProjects();
-      } else {
-        setError('❌ 保存失败，请检查 Appwrite 配置');
-      }
-    } catch (e) {
-      setError(`❌ 保存失败: ${String(e)}`);
-    }
-  }, [projectName, projectDescription, files, activeFile, aiLanguage, loadCloudProjects]);
-
-  // Load project from cloud
-  const handleLoadFromCloud = useCallback(async (project: ZhCodeProject) => {
-    try {
-      setFiles(project.files);
-      setActiveFile(project.mainFile);
-      setOutput('');
-      setError(`✅ 已加载项目: ${project.projectName}`);
-      setShowCloudProjects(false);
-    } catch (e) {
-      setError(`❌ 加载失败: ${String(e)}`);
-    }
-  }, []);
-
-  // Delete cloud project
-  const handleDeleteCloudProject = useCallback(async (projectId: string) => {
-    if (!window.confirm('确定要删除这个项目吗？')) return;
-
-    try {
-      const success = await deleteProject(projectId);
-      if (success) {
-        setError('✅ 项目已删除');
-        await loadCloudProjects();
-      } else {
-        setError('❌ 删除失败');
-      }
-    } catch (e) {
-      setError(`❌ 删除失败: ${String(e)}`);
-    }
-  }, [loadCloudProjects]);
 
   // Export code
   const handleExportCode = useCallback(async () => {
@@ -1187,38 +2468,123 @@ export function App(): JSX.Element {
     }
   }, [apiKey, aiProvider, aiLanguage, logOperation]);
 
+  // Detect code type from file content and extension
+  const detectCodeType = useCallback((code: string, fileName: string): 'zhcode' | 'react' | 'javascript' | 'typescript' => {
+    // Check file extension first
+    if (fileName.endsWith('.zhc') || fileName.endsWith('.zh')) {
+      return 'zhcode';
+    }
+    if (fileName.endsWith('.tsx') || fileName.endsWith('.jsx')) {
+      return 'react';
+    }
+    if (fileName.endsWith('.ts')) {
+      return 'typescript';
+    }
+    if (fileName.endsWith('.js')) {
+      return 'javascript';
+    }
+    
+    // Check code content
+    const zhCodeKeywords = ['函数', '返回', '令', '如果', '否则', '对于', '当', '打印', '类', '导入', '导出'];
+    const reactKeywords = ['import React', 'useState', 'useEffect', 'useCallback', 'jsx', 'tsx', '<div', '</div>', 'export default'];
+    const tsKeywords = ['interface', 'type ', ': string', ': number', ': boolean', 'as ', 'generic'];
+    
+    const hasZhCode = zhCodeKeywords.some(kw => code.includes(kw));
+    const hasReact = reactKeywords.some(kw => code.includes(kw));
+    const hasTS = tsKeywords.some(kw => code.includes(kw));
+    
+    if (hasZhCode) return 'zhcode';
+    if (hasReact) return 'react';
+    if (hasTS) return 'typescript';
+    return 'javascript';
+  }, []);
+
   const handleGenerateCode = useCallback(async () => {
     if (!aiInput.trim()) {
       setAiExplanation('请输入代码描述');
       return;
     }
+    
+    // Detect current code type
+    const currentCode = files[activeFile] || '';
+    const codeType = detectCodeType(currentCode, activeFile);
+    
+    // Build context-aware prompt
+    let contextPrompt = aiInput;
+    const codeTypeNames: Record<string, string> = {
+      'zhcode': 'ZhCode (中文编程语言)',
+      'react': 'React/JSX',
+      'typescript': 'TypeScript',
+      'javascript': 'JavaScript'
+    };
+    
+    // Add code type context to the request
+    contextPrompt = `[代码类型: ${codeTypeNames[codeType]}]\n[需求]: ${aiInput}\n[当前代码上下文]:\n${currentCode.slice(0, 500)}`;
+    
     try {
-      const result = await callAIService('generate', aiInput, apiKey, aiProvider, aiLanguage);
+      setAiExplanation('🔄 正在生成代码...');
+      
+      // For local backend, use enhanced generate endpoint
+      if (aiProvider === 'local') {
+        const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3002';
+        const response = await fetch(`${API_URL}/api/generate`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            description: aiInput,
+            codeType,
+            currentCode: currentCode.slice(0, 1000),
+            language: aiLanguage
+          })
+        });
+        
+        if (response.ok) {
+          const result = await response.json();
+          const generatedCode = result.code || result.explanation || '';
+          
+          if (generatedCode) {
+            const newCode = currentCode + '\n\n' + generatedCode;
+            const newFiles = { ...files };
+            newFiles[activeFile] = newCode;
+            setFiles(newFiles);
+            setAiExplanation(`✅ 已生成 ${codeTypeNames[codeType]} 代码！\n\n${generatedCode.slice(0, 300)}${generatedCode.length > 300 ? '...' : ''}`);
+            setAiInput('');
+            await logOperation('generate', aiInput, generatedCode, 'success');
+            setTimeout(() => {
+              handleCompileAndRun();
+              detectProblems(newCode, activeFile);
+            }, 300);
+            return;
+          }
+        }
+      }
+      
+      // Fallback to external AI or error
+      const result = await callAIService('generate', contextPrompt, apiKey, aiProvider, aiLanguage);
       if (result?.error) {
         setAiExplanation(result.error);
         await logOperation('generate', aiInput, result.error, 'error', result.error);
       } else if (result?.explanation) {
-        const currentCode = files[activeFile];
         const newCode = currentCode + '\n\n' + result.explanation;
         const newFiles = { ...files };
         newFiles[activeFile] = newCode;
         setFiles(newFiles);
-        setAiExplanation(`✓ 代码已添加到 ${activeFile}！\n\n生成的代码：\n${result.explanation.slice(0, 200)}${result.explanation.length > 200 ? '...' : ''}`);
+        setAiExplanation(`✅ 已生成 ${codeTypeNames[codeType]} 代码！\n\n${result.explanation.slice(0, 300)}${result.explanation.length > 300 ? '...' : ''}`);
         setAiInput('');
         await logOperation('generate', aiInput, result.explanation, 'success');
-        // Auto-compile to verify syntax
         setTimeout(() => {
           handleCompileAndRun();
+          detectProblems(newCode, activeFile);
         }, 300);
       } else {
-        setAiExplanation('无法连接到AI服务');
+        setAiExplanation('❌ 无法连接到AI服务');
         await logOperation('generate', aiInput, '', 'error', '无法连接到AI服务');
       }
     } catch (e) {
-      setAiExplanation('AI 服务错误');
+      setAiExplanation('❌ AI 服务错误: ' + String(e));
       await logOperation('generate', aiInput, '', 'error', String(e));
     }
-  }, [aiInput, files, activeFile, apiKey, aiProvider, aiLanguage, handleCompileAndRun, logOperation]);
+  }, [aiInput, files, activeFile, apiKey, aiProvider, aiLanguage, handleCompileAndRun, logOperation, detectCodeType, detectProblems]);
 
   const handleGetSuggestions = useCallback(async () => {
     try {
@@ -1388,6 +2754,35 @@ export function App(): JSX.Element {
     }
   }, [selectedText, apiKey, aiProvider, aiLanguage, contextMenu, logOperation]);
 
+  // Initial error detection
+  useEffect(() => {
+    if (files[activeFile]) {
+      detectProblems(files[activeFile], activeFile);
+    }
+  }, [activeFile, detectProblems, files]);
+
+  // Handle problem click - jump to line
+  const handleProblemClick = useCallback((problem: Problem) => {
+    setSelectedLineNumber(problem.line);
+    
+    // Focus and scroll to the line in textarea
+    if (textareaRef.current) {
+      const lines = textareaRef.current.value.split('\n');
+      let charIndex = 0;
+      for (let i = 0; i < problem.line - 1 && i < lines.length; i++) {
+        charIndex += lines[i].length + 1; // +1 for newline
+      }
+      
+      textareaRef.current.focus();
+      textareaRef.current.selectionStart = charIndex;
+      textareaRef.current.selectionEnd = charIndex + (lines[problem.line - 1]?.length || 0);
+      
+      // Scroll to the line
+      const lineHeight = 14 * 1.6;
+      textareaRef.current.scrollTop = (problem.line - 5) * lineHeight;
+    }
+  }, []);
+
   // Close context menu on click outside
   React.useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -1426,6 +2821,14 @@ export function App(): JSX.Element {
           <span className="app-title">ZhCode IDE</span>
         </div>
         <div className="header-right">
+          {/* Theme Toggle */}
+          <button 
+            className="btn btn-icon"
+            onClick={handleThemeToggle}
+            title={`切换主题 (当前: ${theme === 'dark' ? '暗黑' : '亮色'})`}
+          >
+            <i className={`fas fa-${theme === 'dark' ? 'sun' : 'moon'}`}></i>
+          </button>
           <button 
             className="btn btn-icon"
             onClick={handleUndo}
@@ -1460,12 +2863,47 @@ export function App(): JSX.Element {
           >
             <i className="fas fa-book"></i>
           </button>
+          {/* File System Buttons */}
           <button 
             className="btn btn-icon"
-            onClick={() => { setShowCloudProjects(true); loadCloudProjects(); }}
-            title="Cloud Projects"
+            onClick={handleOpenLocalFolder}
+            title="打开本地文件夹"
+            style={{ 
+              color: storageMode === 'local' ? '#10b981' : 'var(--text-secondary)'
+            }}
           >
-            <i className="fas fa-cloud"></i>
+            <i className="fas fa-folder-open"></i>
+          </button>
+          <button 
+            className="btn btn-icon"
+            onClick={handleOpenStorageModal}
+            title="存储设置"
+            style={{ position: 'relative' }}
+          >
+            <i className={`fas fa-${storageMode === 'local' ? 'hard-drive' : 'cloud'}`}></i>
+            {storageMode === 'local' && localFolderName && (
+              <span style={{
+                position: 'absolute',
+                top: '-2px',
+                right: '-2px',
+                width: '8px',
+                height: '8px',
+                background: '#10b981',
+                borderRadius: '50%'
+              }}></span>
+            )}
+          </button>
+          <button 
+            className="btn btn-icon"
+            onClick={handleSaveSession}
+            title={`保存 (Ctrl+S) ${lastSaveTime ? `- 上次: ${lastSaveTime}` : ''}`}
+            disabled={isSaving}
+            style={{ 
+              color: isSaving ? '#888' : 'var(--text-secondary)',
+              animation: isSaving ? 'pulse 1s infinite' : 'none'
+            }}
+          >
+            <i className={`fas fa-${isSaving ? 'spinner fa-spin' : 'save'}`}></i>
           </button>
           <button 
             className="btn btn-icon"
@@ -1647,6 +3085,13 @@ export function App(): JSX.Element {
           </button>
           <button 
             className="btn btn-icon"
+            onClick={handleFormatCode}
+            title="格式化代码 (Ctrl+Shift+F)"
+          >
+            <i className="fas fa-indent"></i>
+          </button>
+          <button 
+            className="btn btn-icon"
             onClick={() => handleCompileAndRun()}
             title="Run Code"
           >
@@ -1654,11 +3099,11 @@ export function App(): JSX.Element {
           </button>
           <button 
             className="btn btn-icon"
-            onClick={() => setShowTerminal(!showTerminal)}
-            title={showTerminal ? "Hide Terminal" : "Show Terminal"}
+            onClick={() => setActiveBottomTab(activeBottomTab === 'terminal' ? 'output' : 'terminal')}
+            title="Toggle Terminal"
             style={{ 
-              color: showTerminal ? '#667eea' : 'var(--text-secondary)',
-              borderBottom: showTerminal ? '2px solid #667eea' : 'none'
+              color: activeBottomTab === 'terminal' ? '#667eea' : 'var(--text-secondary)',
+              borderBottom: activeBottomTab === 'terminal' ? '2px solid #667eea' : 'none'
             }}
           >
             <i className="fas fa-terminal"></i>
@@ -1929,6 +3374,314 @@ export function App(): JSX.Element {
               >
                 <i className="fas fa-check"></i>
                 <span>保存</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Storage Settings Modal */}
+      {showStorageModal && (
+        <div className="modal-overlay" onClick={() => setShowStorageModal(false)}>
+          <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: '500px' }}>
+            <div className="modal-header">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1 }}>
+                <i className="fas fa-database" style={{ color: 'var(--primary)', fontSize: '18px' }}></i>
+                <h2>存储设置</h2>
+              </div>
+              <button className="btn-close" onClick={() => setShowStorageModal(false)}>
+                <i className="fas fa-times"></i>
+              </button>
+            </div>
+            <div className="modal-body">
+              {/* Storage Mode Selection */}
+              <div className="settings-section">
+                <div className="settings-label">
+                  <i className="fas fa-hard-drive"></i>
+                  <span>存储模式</span>
+                </div>
+                <div className="provider-buttons" style={{ marginTop: '10px' }}>
+                  <button
+                    className={`provider-btn ${storageMode === 'local' ? 'active' : ''}`}
+                    onClick={() => handleSwitchStorageMode('local')}
+                    style={{ flex: 1 }}
+                  >
+                    <i className="fas fa-folder"></i>
+                    <span>本地文件夹</span>
+                  </button>
+                  <button
+                    className={`provider-btn ${storageMode === 'cloud' ? 'active' : ''}`}
+                    onClick={() => handleSwitchStorageMode('cloud')}
+                    style={{ flex: 1 }}
+                  >
+                    <i className="fas fa-cloud"></i>
+                    <span>云端存储</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Local Mode Options */}
+              {storageMode === 'local' && (
+                <div className="settings-section">
+                  <div style={{
+                    padding: '16px',
+                    background: 'rgba(16, 185, 129, 0.1)',
+                    border: '1px solid rgba(16, 185, 129, 0.3)',
+                    borderRadius: '8px',
+                    marginTop: '12px'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
+                      <i className="fas fa-folder-open" style={{ color: '#10b981', fontSize: '20px' }}></i>
+                      <div>
+                        <strong style={{ color: '#10b981' }}>
+                          {localFolderName ? `📁 ${localFolderName}` : '未选择文件夹'}
+                        </strong>
+                        {localFolderName && (
+                          <div style={{ fontSize: '12px', color: '#888', marginTop: '4px' }}>
+                            {Object.keys(files).length} 个文件
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    <button 
+                      className="btn btn-primary" 
+                      onClick={handleOpenLocalFolder}
+                      style={{ width: '100%' }}
+                    >
+                      <i className="fas fa-folder-plus"></i>
+                      <span>{localFolderName ? '更换文件夹' : '选择文件夹'}</span>
+                    </button>
+                    {localFolderName && (
+                      <button 
+                        className="btn btn-secondary" 
+                        onClick={handleSaveAllLocal}
+                        style={{ width: '100%', marginTop: '8px' }}
+                        disabled={isSaving}
+                      >
+                        <i className={`fas fa-${isSaving ? 'spinner fa-spin' : 'save'}`}></i>
+                        <span>保存所有文件</span>
+                      </button>
+                    )}
+                  </div>
+                  {!isFileSystemAccessSupported() && (
+                    <div className="info-callout" style={{ marginTop: '12px', background: 'rgba(239, 68, 68, 0.1)', borderColor: 'rgba(239, 68, 68, 0.3)' }}>
+                      <div className="info-icon" style={{ color: '#ef4444' }}>
+                        <i className="fas fa-exclamation-triangle"></i>
+                      </div>
+                      <p style={{ color: '#ef4444' }}>您的浏览器不支持本地文件系统访问。请使用 Chrome、Edge 或 Opera。</p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Cloud Mode Options */}
+              {storageMode === 'cloud' && (
+                <div className="settings-section">
+                  <div style={{
+                    padding: '16px',
+                    background: 'rgba(14, 165, 233, 0.1)',
+                    border: '1px solid rgba(14, 165, 233, 0.3)',
+                    borderRadius: '8px',
+                    marginTop: '12px'
+                  }}>
+                    <div style={{ marginBottom: '12px' }}>
+                      <label style={{ fontSize: '12px', color: '#888', marginBottom: '6px', display: 'block' }}>
+                        项目名称
+                      </label>
+                      <input
+                        type="text"
+                        className="settings-input"
+                        value={projectName}
+                        onChange={(e) => setProjectName(e.target.value)}
+                        placeholder="输入项目名称"
+                      />
+                    </div>
+                    <button 
+                      className="btn btn-primary" 
+                      onClick={handleSaveToCloudStorage}
+                      style={{ width: '100%' }}
+                      disabled={isSaving || !projectName?.trim()}
+                    >
+                      <i className={`fas fa-${isSaving ? 'spinner fa-spin' : 'cloud-arrow-up'}`}></i>
+                      <span>保存到云端</span>
+                    </button>
+                    <button 
+                      className="btn btn-secondary" 
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        handleNewCloudProject();
+                      }}
+                      style={{ width: '100%', marginTop: '8px' }}
+                      type="button"
+                    >
+                      <i className="fas fa-plus"></i>
+                      <span>新建项目</span>
+                    </button>
+                  </div>
+
+                  {/* Cloud Projects List */}
+                  {cloudProjectsList.length > 0 && (
+                    <div style={{ marginTop: '16px' }}>
+                      <div className="settings-label" style={{ marginBottom: '8px' }}>
+                        <i className="fas fa-list"></i>
+                        <span>云端项目 ({cloudProjectsList.length})</span>
+                      </div>
+                      <div style={{ 
+                        maxHeight: '200px', 
+                        overflowY: 'auto',
+                        background: 'rgba(0, 0, 0, 0.2)',
+                        borderRadius: '8px',
+                        border: '1px solid rgba(255, 255, 255, 0.1)'
+                      }}>
+                        {cloudProjectsList.map((project, idx) => (
+                          <div
+                            key={project.id}
+                            style={{
+                              padding: '12px',
+                              borderBottom: idx < cloudProjectsList.length - 1 ? '1px solid rgba(255, 255, 255, 0.05)' : 'none',
+                              display: 'flex',
+                              justifyContent: 'space-between',
+                              alignItems: 'center',
+                              background: currentCloudProjectId === project.id ? 'rgba(14, 165, 233, 0.15)' : 'transparent'
+                            }}
+                            onMouseEnter={(e) => {
+                              if (currentCloudProjectId !== project.id) {
+                                e.currentTarget.style.background = 'rgba(14, 165, 233, 0.1)';
+                              }
+                            }}
+                            onMouseLeave={(e) => {
+                              if (currentCloudProjectId !== project.id) {
+                                e.currentTarget.style.background = 'transparent';
+                              }
+                            }}
+                          >
+                            <div
+                              style={{ flex: 1, cursor: 'pointer' }}
+                              onClick={() => handleLoadFromCloudStorage(project.id)}
+                            >
+                              <div style={{ fontWeight: '500', fontSize: '14px' }}>
+                                <i className="fas fa-folder" style={{ marginRight: '8px', color: currentCloudProjectId === project.id ? '#10b981' : '#0ea5e9' }}></i>
+                                {project.name}
+                                {currentCloudProjectId === project.id && (
+                                  <span style={{ marginLeft: '8px', fontSize: '10px', color: '#10b981' }}>(当前)</span>
+                                )}
+                              </div>
+                              <div style={{ fontSize: '11px', color: '#666', marginTop: '2px' }}>
+                                {new Date(project.updatedAt).toLocaleString()}
+                              </div>
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <button
+                                onClick={async (e) => {
+                                  e.stopPropagation();
+                                  if (confirm(`确定要删除项目 "${project.name}" 吗？`)) {
+                                    const success = await deleteProject(project.id);
+                                    if (success) {
+                                      setCloudProjectsList(prev => prev.filter(p => p.id !== project.id));
+                                      if (currentCloudProjectId === project.id) {
+                                        setCurrentCloudProjectId(null);
+                                        setProjectName('');
+                                      }
+                                    } else {
+                                      alert('删除失败');
+                                    }
+                                  }
+                                }}
+                                style={{
+                                  background: 'transparent',
+                                  border: 'none',
+                                  color: '#ef4444',
+                                  cursor: 'pointer',
+                                  padding: '4px 8px',
+                                  borderRadius: '4px',
+                                  opacity: 0.7
+                                }}
+                                onMouseEnter={(e) => {
+                                  e.currentTarget.style.background = 'rgba(239, 68, 68, 0.2)';
+                                  e.currentTarget.style.opacity = '1';
+                                }}
+                                onMouseLeave={(e) => {
+                                  e.currentTarget.style.background = 'transparent';
+                                  e.currentTarget.style.opacity = '0.7';
+                                }}
+                                title="删除项目"
+                              >
+                                <i className="fas fa-trash"></i>
+                              </button>
+                              <i className="fas fa-chevron-right" style={{ color: '#666' }}></i>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Auto-save Toggle */}
+              <div className="settings-section" style={{ marginTop: '16px' }}>
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  padding: '12px 16px',
+                  background: 'rgba(255, 255, 255, 0.05)',
+                  borderRadius: '8px'
+                }}>
+                  <div>
+                    <div style={{ fontWeight: '500' }}>自动保存</div>
+                    <div style={{ fontSize: '12px', color: '#888' }}>
+                      每 5 秒自动保存到本地存储
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setAutoSaveEnabled(!autoSaveEnabled)}
+                    style={{
+                      width: '50px',
+                      height: '26px',
+                      borderRadius: '13px',
+                      background: autoSaveEnabled ? '#10b981' : '#333',
+                      border: 'none',
+                      cursor: 'pointer',
+                      position: 'relative',
+                      transition: 'background 0.3s'
+                    }}
+                  >
+                    <div style={{
+                      width: '22px',
+                      height: '22px',
+                      borderRadius: '50%',
+                      background: '#fff',
+                      position: 'absolute',
+                      top: '2px',
+                      left: autoSaveEnabled ? '26px' : '2px',
+                      transition: 'left 0.3s'
+                    }}></div>
+                  </button>
+                </div>
+              </div>
+
+              {/* Last Save Info */}
+              {lastSaveTime && (
+                <div style={{
+                  marginTop: '12px',
+                  padding: '8px 12px',
+                  background: 'rgba(16, 185, 129, 0.1)',
+                  borderRadius: '6px',
+                  fontSize: '12px',
+                  color: '#10b981',
+                  textAlign: 'center'
+                }}>
+                  <i className="fas fa-check-circle" style={{ marginRight: '6px' }}></i>
+                  上次保存: {lastSaveTime}
+                </div>
+              )}
+            </div>
+            <div className="modal-footer">
+              <button className="btn-cancel" onClick={() => setShowStorageModal(false)}>
+                <i className="fas fa-times"></i>
+                <span>关闭</span>
               </button>
             </div>
           </div>
@@ -2486,130 +4239,6 @@ export function App(): JSX.Element {
         </div>
       )}
 
-      {showCloudProjects && (
-        <div className="modal-overlay" onClick={() => setShowCloudProjects(false)}>
-          <div className="modal" onClick={e => e.stopPropagation()} style={{ maxHeight: '80vh', overflow: 'auto', minWidth: '550px' }}>
-            <div className="modal-header">
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1 }}>
-                <i className="fas fa-cloud" style={{ color: 'var(--primary)', fontSize: '18px' }}></i>
-                <h2>云端项目</h2>
-                {cloudProjectsLoading && <span style={{ marginLeft: 'auto', fontSize: '12px', color: '#888' }}>加载中...</span>}
-              </div>
-              <button className="btn-close" onClick={() => setShowCloudProjects(false)}>
-                <i className="fas fa-times"></i>
-              </button>
-            </div>
-            <div className="modal-body" style={{ maxHeight: 'calc(80vh - 220px)', overflow: 'auto' }}>
-              <div style={{ marginBottom: '20px', paddingBottom: '20px', borderBottom: '1px solid rgba(255, 255, 255, 0.1)' }}>
-                <div style={{ marginBottom: '12px' }}>
-                  <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', fontWeight: 'bold' }}>项目名称</label>
-                  <input
-                    type="text"
-                    className="settings-input"
-                    value={projectName}
-                    onChange={(e) => setProjectName(e.target.value)}
-                    placeholder="输入项目名称"
-                  />
-                </div>
-                <div style={{ marginBottom: '12px' }}>
-                  <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', fontWeight: 'bold' }}>项目描述（可选）</label>
-                  <textarea
-                    className="settings-input"
-                    value={projectDescription}
-                    onChange={(e) => setProjectDescription(e.target.value)}
-                    placeholder="输入项目描述"
-                    style={{ resize: 'vertical', minHeight: '60px' }}
-                  />
-                </div>
-                <button 
-                  className="btn-save"
-                  onClick={handleSaveToCloud}
-                  style={{ width: '100%' }}
-                >
-                  <i className="fas fa-cloud-upload-alt"></i>
-                  <span>保存当前项目到云端</span>
-                </button>
-              </div>
-
-              {cloudProjects.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '40px 20px', color: '#888' }}>
-                  <i className="fas fa-inbox" style={{ fontSize: '40px', marginBottom: '10px', display: 'block' }}></i>
-                  <p>暂无云端项目</p>
-                </div>
-              ) : (
-                <div>
-                  {cloudProjects.map((project) => (
-                    <div key={project.$id} style={{
-                      padding: '12px',
-                      marginBottom: '8px',
-                      background: 'rgba(255, 255, 255, 0.02)',
-                      border: '1px solid rgba(255, 255, 255, 0.1)',
-                      borderRadius: '4px'
-                    }}>
-                      <div style={{ marginBottom: '8px' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
-                          <h4 style={{ margin: '0 0 4px 0', color: '#fff' }}>{project.projectName}</h4>
-                          <span style={{ fontSize: '11px', color: '#888' }}>
-                            {new Date(project.updatedAt).toLocaleDateString()}
-                          </span>
-                        </div>
-                        {project.description && (
-                          <p style={{ margin: '4px 0', fontSize: '12px', color: '#aaa' }}>
-                            {project.description}
-                          </p>
-                        )}
-                        <div style={{ fontSize: '11px', color: '#888', marginTop: '4px' }}>
-                          📁 {Object.keys(project.files).length} 个文件
-                        </div>
-                      </div>
-                      <div style={{ display: 'flex', gap: '8px' }}>
-                        <button
-                          style={{
-                            flex: 1,
-                            background: 'var(--primary)',
-                            color: 'white',
-                            border: 'none',
-                            padding: '6px 12px',
-                            borderRadius: '3px',
-                            cursor: 'pointer',
-                            fontSize: '12px',
-                            fontWeight: '500'
-                          }}
-                          onClick={() => handleLoadFromCloud(project)}
-                        >
-                          <i className="fas fa-download"></i> 加载
-                        </button>
-                        <button
-                          style={{
-                            background: '#ef4444',
-                            color: 'white',
-                            border: 'none',
-                            padding: '6px 12px',
-                            borderRadius: '3px',
-                            cursor: 'pointer',
-                            fontSize: '12px',
-                            fontWeight: '500'
-                          }}
-                          onClick={() => handleDeleteCloudProject(project.$id || '')}
-                        >
-                          <i className="fas fa-trash"></i> 删除
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-            <div className="modal-footer">
-              <button className="btn-cancel" onClick={() => setShowCloudProjects(false)}>
-                <i className="fas fa-times"></i>
-                <span>关闭</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* AI Assistant Modal */}
       {showAIAssistantModal && (
         <div className="modal-overlay" onClick={() => setShowAIAssistantModal(false)}>
@@ -2637,6 +4266,29 @@ export function App(): JSX.Element {
           <div className="editor-header">
             <i className="fas fa-file-code"></i>
             <h3>文件</h3>
+            {/* Storage Status Badge */}
+            <div 
+              style={{ 
+                marginLeft: 'auto', 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: '6px',
+                padding: '4px 8px',
+                background: storageMode === 'local' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(14, 165, 233, 0.15)',
+                borderRadius: '12px',
+                fontSize: '10px',
+                color: storageMode === 'local' ? '#10b981' : '#0ea5e9',
+                cursor: 'pointer'
+              }}
+              onClick={handleOpenStorageModal}
+              title={storageMode === 'local' ? `本地: ${localFolderName || '未选择'}` : '云端存储'}
+            >
+              <i className={`fas fa-${storageMode === 'local' ? 'hard-drive' : 'cloud'}`}></i>
+              <span>{storageMode === 'local' ? (localFolderName?.slice(0, 10) + (localFolderName && localFolderName.length > 10 ? '...' : '') || '本地') : '云端'}</span>
+              {autoSaveEnabled && (
+                <i className="fas fa-sync" style={{ fontSize: '8px', opacity: 0.7 }} title="自动保存已开启"></i>
+              )}
+            </div>
           </div>
           <ul className="file-list">
             {Object.keys(files).map((file) => {
@@ -2749,15 +4401,37 @@ export function App(): JSX.Element {
             <div className="editor-header">
               <i className="fas fa-pen"></i>
               编辑器
+              {problems.length > 0 && (
+                <span style={{ 
+                  marginLeft: 'auto', 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: '8px',
+                  fontSize: '12px'
+                }}>
+                  {problems.filter(p => p.severity === 'error').length > 0 && (
+                    <span style={{ color: '#ef4444' }}>
+                      <i className="fas fa-circle-xmark"></i> {problems.filter(p => p.severity === 'error').length}
+                    </span>
+                  )}
+                  {problems.filter(p => p.severity === 'warning').length > 0 && (
+                    <span style={{ color: '#f59e0b' }}>
+                      <i className="fas fa-triangle-exclamation"></i> {problems.filter(p => p.severity === 'warning').length}
+                    </span>
+                  )}
+                </span>
+              )}
             </div>
             <div className="editor-content-wrapper">
               <div className="line-numbers">
                 {(files[activeFile] || '').split('\n').map((_, i) => (
                   <div 
                     key={i} 
-                    className={`line-number ${selectedLineNumber === i + 1 ? 'selected' : ''}`}
+                    className={`line-number ${selectedLineNumber === i + 1 ? 'selected' : ''} ${errorLines.has(i + 1) ? 'error' : ''}`}
                     onClick={() => setSelectedLineNumber(i + 1)}
+                    title={errorLines.has(i + 1) ? problems.find(p => p.line === i + 1)?.message : undefined}
                   >
+                    {errorLines.has(i + 1) && <i className="fas fa-circle" style={{ fontSize: '6px', marginRight: '4px', color: '#ef4444' }}></i>}
                     {i + 1}
                   </div>
                 ))}
@@ -2771,10 +4445,30 @@ export function App(): JSX.Element {
                     }}
                   />
                 )}
+                {/* Error line highlights */}
+                {Array.from(errorLines).map(lineNum => (
+                  <div 
+                    key={`error-${lineNum}`}
+                    className="error-line-highlight"
+                    style={{
+                      position: 'absolute',
+                      top: `calc(15px + (${lineNum - 1}) * (14px * 1.6) - ${editorScrollTop}px)`,
+                      left: 0,
+                      right: 0,
+                      height: 'calc(14px * 1.6)',
+                      background: 'rgba(239, 68, 68, 0.15)',
+                      borderLeft: '3px solid #ef4444',
+                      pointerEvents: 'none',
+                      zIndex: 1
+                    }}
+                  />
+                ))}
                 <textarea
+                  ref={textareaRef}
                   className="code-editor"
                   value={files[activeFile] || ''}
-                  onChange={(e) => handleCodeChange(e.target.value)}
+                  onChange={handleEditorInput}
+                  onKeyDown={handleEditorKeyDown}
                   onScroll={(e) => {
                     // Sync line numbers scroll with textarea
                     const textarea = e.currentTarget;
@@ -2785,6 +4479,8 @@ export function App(): JSX.Element {
                     if (lineNumbersEl) {
                       lineNumbersEl.scrollTop = scrollTop;
                     }
+                    // Hide autocomplete on scroll
+                    setShowAutocomplete(false);
                   }}
                   onClick={(e) => {
                     const textarea = e.currentTarget;
@@ -2792,6 +4488,12 @@ export function App(): JSX.Element {
                     const selectionStart = textarea.selectionStart;
                     const lineNumber = text.substring(0, selectionStart).split('\n').length;
                     setSelectedLineNumber(lineNumber);
+                    // Hide autocomplete on click elsewhere
+                    setShowAutocomplete(false);
+                  }}
+                  onBlur={() => {
+                    // Delay hiding autocomplete to allow click on suggestion
+                    setTimeout(() => setShowAutocomplete(false), 200);
                   }}
                   onMouseUp={(e) => {
                 const text = window.getSelection()?.toString() || '';
@@ -2815,8 +4517,19 @@ export function App(): JSX.Element {
                   setContextMenu({...contextMenu, visible: false});
                 }
               }}
-              placeholder="输入 ZhCode 代码..."
+              placeholder="输入 ZhCode 代码... (Ctrl+Space 触发自动补全)"
             />
+                
+                {/* Autocomplete dropdown */}
+                <Autocomplete
+                  suggestions={autocompleteSuggestions}
+                  visible={showAutocomplete}
+                  position={autocompletePosition}
+                  selectedIndex={autocompleteSelectedIndex}
+                  onSelect={handleAutocompleteSelect}
+                  onHover={setAutocompleteSelectedIndex}
+                  filterText={autocompleteFilterText}
+                />
               </div>
             </div>
           </div>
@@ -2871,42 +4584,96 @@ export function App(): JSX.Element {
             style={{ cursor: 'row-resize' }}
           />
 
-          {/* Bottom: Terminal and Output Side by Side */}
-          {(showTerminal || showOutput) && (
-            <div className="bottom-panels-container" style={{ display: 'flex', height: `${bottomPanelHeight}px`, background: 'var(--border)' }}>
-              {/* Terminal Panel - Left */}
-              {showTerminal && (
-                <div className="terminal-panel" style={{ width: `${terminalWidth}%`, display: 'flex', flexDirection: 'column', minWidth: '150px', overflow: 'hidden', flexShrink: 0 }}>
-                  <WindowsTerminal onClose={() => setShowTerminal(false)} />
+          {/* Bottom Panels Container with Tabs */}
+          <div className="bottom-panels-container" style={{ display: 'flex', flexDirection: 'column', height: `${bottomPanelHeight}px`, background: '#1e1e1e' }}>
+            {/* Tab Header */}
+            <div style={{ display: 'flex', borderBottom: '1px solid #2d2d2d', background: '#252526', overflowX: 'auto' }}>
+              <button 
+                className="tab-button"
+                onClick={() => setActiveBottomTab('terminal')}
+                style={{
+                  padding: '10px 16px',
+                  border: 'none',
+                  background: activeBottomTab === 'terminal' ? '#1e1e1e' : 'transparent',
+                  color: activeBottomTab === 'terminal' ? '#e0e0e0' : '#868686',
+                  cursor: 'pointer',
+                  borderBottom: activeBottomTab === 'terminal' ? '3px solid #667eea' : 'none',
+                  fontSize: '12px',
+                  fontWeight: activeBottomTab === 'terminal' ? '600' : '400',
+                  transition: 'all 0.2s ease',
+                  whiteSpace: 'nowrap'
+                }}
+              >
+                <i className="fas fa-terminal" style={{ marginRight: '6px' }}></i>
+                终端
+              </button>
+              <button 
+                className="tab-button"
+                onClick={() => setActiveBottomTab('output')}
+                style={{
+                  padding: '10px 16px',
+                  border: 'none',
+                  background: activeBottomTab === 'output' ? '#1e1e1e' : 'transparent',
+                  color: activeBottomTab === 'output' ? '#e0e0e0' : '#868686',
+                  cursor: 'pointer',
+                  borderBottom: activeBottomTab === 'output' ? '3px solid #667eea' : 'none',
+                  fontSize: '12px',
+                  fontWeight: activeBottomTab === 'output' ? '600' : '400',
+                  transition: 'all 0.2s ease',
+                  whiteSpace: 'nowrap'
+                }}
+              >
+                <i className="fas fa-code" style={{ marginRight: '6px' }}></i>
+                输出
+              </button>
+              <button 
+                className="tab-button"
+                onClick={() => setActiveBottomTab('problems')}
+                style={{
+                  padding: '10px 16px',
+                  border: 'none',
+                  background: activeBottomTab === 'problems' ? '#1e1e1e' : 'transparent',
+                  color: activeBottomTab === 'problems' ? '#e0e0e0' : '#868686',
+                  cursor: 'pointer',
+                  borderBottom: activeBottomTab === 'problems' ? '3px solid #667eea' : 'none',
+                  fontSize: '12px',
+                  fontWeight: activeBottomTab === 'problems' ? '600' : '400',
+                  transition: 'all 0.2s ease',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  whiteSpace: 'nowrap'
+                }}
+              >
+                <i className="fas fa-circle-xmark"></i>
+                问题
+                {problems.filter(p => p.severity === 'error').length > 0 && (
+                  <span style={{ 
+                    background: '#ef4444', 
+                    color: 'white', 
+                    padding: '1px 6px', 
+                    borderRadius: '10px',
+                    fontSize: '10px'
+                  }}>
+                    {problems.filter(p => p.severity === 'error').length}
+                  </span>
+                )}
+              </button>
+            </div>
+
+            {/* Tab Content */}
+            <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
+              {/* Terminal Tab */}
+              {activeBottomTab === 'terminal' && (
+                <div style={{ width: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                  <WindowsTerminal workingDirectory={localFolderPath} />
                 </div>
               )}
 
-              {/* Terminal-Output Divider */}
-              {showTerminal && showOutput && (
-                <div 
-                  className="resize-handle-vertical"
-                  onMouseDown={handleTerminalOutputDragStart}
-                  style={{ cursor: 'col-resize' }}
-                />
-              )}
-
-              {/* Output Panel - Right */}
-              {showOutput && (
-                <div className="output-grid" style={{ width: showTerminal ? `${100 - terminalWidth}%` : '100%', display: 'flex', flexDirection: 'column', minWidth: '150px', overflow: 'hidden', flexShrink: 0 }}>
-                  <div className="output-section" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-                    <div className="output-header">
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1 }}>
-                        <i className="fas fa-code"></i>
-                        <span>输出</span>
-                      </div>
-                      <button 
-                        className="btn-close"
-                        onClick={() => setShowOutput(false)}
-                        style={{ padding: '4px 8px', color: 'var(--text-secondary)' }}
-                      >
-                        <i className="fas fa-times"></i>
-                      </button>
-                    </div>
+              {/* Output Tab */}
+              {activeBottomTab === 'output' && (
+                <div style={{ width: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                  <div className="output-section" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
                     <div className="output-content" style={{ flex: 1, overflow: 'auto' }}>
                       {output && <pre>{output}</pre>}
                       {!output && <span className="placeholder">(运行代码查看输出)</span>}
@@ -2914,30 +4681,22 @@ export function App(): JSX.Element {
                   </div>
                 </div>
               )}
-            </div>
-          )}
 
-          {/* Show hidden panels buttons */}
-          <div style={{ display: 'flex', gap: '8px', padding: '8px', flexWrap: 'wrap' }}>
-            {!showOutput && (
-              <button 
-                className="btn btn-secondary"
-                onClick={() => setShowOutput(true)}
-                style={{ padding: '6px 12px', fontSize: '12px' }}
-              >
-                <i className="fas fa-code"></i> 输出
-              </button>
-            )}
-            {!showTerminal && (
-              <button 
-                className="btn btn-secondary"
-                onClick={() => setShowTerminal(true)}
-                style={{ padding: '6px 12px', fontSize: '12px' }}
-              >
-                <i className="fas fa-terminal"></i> 终端
-              </button>
-            )}
-            {!showPreview && (
+              {/* Problems Tab */}
+              {activeBottomTab === 'problems' && (
+                <div style={{ width: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                  <ProblemsPanel 
+                    problems={problems}
+                    onProblemClick={handleProblemClick}
+                  />
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Show Preview button */}
+          {!showPreview && (
+            <div style={{ display: 'flex', gap: '8px', padding: '8px' }}>
               <button 
                 className="btn btn-secondary"
                 onClick={() => setShowPreview(true)}
@@ -2945,8 +4704,8 @@ export function App(): JSX.Element {
               >
                 <i className="fas fa-browser"></i> 预览
               </button>
-            )}
-          </div>
+            </div>
+          )}
         </main>
 
         {/* Resizable divider between editor and preview */}
@@ -3014,6 +4773,22 @@ export function App(): JSX.Element {
                   <div className="ai-tools">
                     <button 
                       className="btn btn-ai-tool"
+                      onClick={() => {
+                        if (textareaRef.current) {
+                          fetchAutocompleteSuggestions(
+                            textareaRef.current.value, 
+                            textareaRef.current.selectionStart
+                          );
+                          textareaRef.current.focus();
+                        }
+                      }}
+                      title="触发代码补全 (Ctrl+. 或 Alt+/)"
+                    >
+                      <i className="fas fa-keyboard"></i>
+                      <span>代码补全</span>
+                    </button>
+                    <button 
+                      className="btn btn-ai-tool"
                       onClick={handleExplainError}
                       title="分析编译/运行错误"
                     >
@@ -3068,12 +4843,26 @@ export function App(): JSX.Element {
                   <div className="ai-section-title">
                     <i className="fas fa-code"></i>
                     <span>代码生成</span>
+                    <span style={{ 
+                      marginLeft: 'auto', 
+                      fontSize: '10px', 
+                      padding: '2px 8px', 
+                      background: 'var(--bg-tertiary)', 
+                      borderRadius: '10px',
+                      color: detectCodeType(files[activeFile] || '', activeFile) === 'zhcode' ? '#10b981' : '#0ea5e9'
+                    }}>
+                      {detectCodeType(files[activeFile] || '', activeFile) === 'zhcode' ? '🇨🇳 ZhCode' : 
+                       detectCodeType(files[activeFile] || '', activeFile) === 'react' ? '⚛️ React' :
+                       detectCodeType(files[activeFile] || '', activeFile) === 'typescript' ? '📘 TypeScript' : '📜 JavaScript'}
+                    </span>
                   </div>
                   <div className="ai-input-group">
                     <input
                       type="text"
                       className="input-field ai-input"
-                      placeholder="描述你需要的代码功能..."
+                      placeholder={detectCodeType(files[activeFile] || '', activeFile) === 'zhcode' 
+                        ? "描述你需要的代码功能... (如: 创建一个打印函数)" 
+                        : "Describe the code you need... (e.g: create a button component)"}
                       value={aiInput}
                       onChange={(e) => setAiInput(e.target.value)}
                       onKeyPress={(e) => {

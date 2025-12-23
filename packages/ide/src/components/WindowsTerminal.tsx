@@ -3,16 +3,31 @@ import './WindowsTerminal.css';
 
 interface WindowsTerminalProps {
   onClose?: () => void;
+  workingDirectory?: string;  // Current local folder path - passed from parent
 }
 
 // Terminal launch only works with local backend
 const API_URL = 'http://localhost:3002';
 
-export function WindowsTerminal({ onClose }: WindowsTerminalProps) {
+export function WindowsTerminal({ workingDirectory }: WindowsTerminalProps) {
   const [isLaunching, setIsLaunching] = useState(false);
   const [launchStatus, setLaunchStatus] = useState<string>('');
 
+  // Get the starting path - use workingDirectory prop or localStorage
+  const getStartingPath = () => {
+    const path = workingDirectory || localStorage.getItem('zhcode_terminal_path') || '';
+    return path.replace(/\//g, '\\');
+  };
+
+  const hasValidPath = !!(workingDirectory || localStorage.getItem('zhcode_terminal_path'));
+
   const launchWindowsTerminal = async () => {
+    if (!hasValidPath) {
+      setLaunchStatus('⚠️ 请先在「存储」面板打开本地文件夹');
+      setTimeout(() => setLaunchStatus(''), 3000);
+      return;
+    }
+    
     setIsLaunching(true);
     setLaunchStatus('启动 Windows Terminal 中...');
 
@@ -24,7 +39,7 @@ export function WindowsTerminal({ onClose }: WindowsTerminalProps) {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          startingPath: 'C:\\'
+          startingPath: getStartingPath()
         })
       });
 
@@ -45,6 +60,12 @@ export function WindowsTerminal({ onClose }: WindowsTerminalProps) {
   };
 
   const launchPowerShell = async () => {
+    if (!hasValidPath) {
+      setLaunchStatus('⚠️ 请先在「存储」面板打开本地文件夹');
+      setTimeout(() => setLaunchStatus(''), 3000);
+      return;
+    }
+    
     setIsLaunching(true);
     setLaunchStatus('启动 PowerShell 中...');
 
@@ -53,7 +74,10 @@ export function WindowsTerminal({ onClose }: WindowsTerminalProps) {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
-        }
+        },
+        body: JSON.stringify({
+          startingPath: getStartingPath()
+        })
       });
 
       if (response.ok) {
@@ -73,6 +97,12 @@ export function WindowsTerminal({ onClose }: WindowsTerminalProps) {
   };
 
   const launchCMD = async () => {
+    if (!hasValidPath) {
+      setLaunchStatus('⚠️ 请先在「存储」面板打开本地文件夹');
+      setTimeout(() => setLaunchStatus(''), 3000);
+      return;
+    }
+    
     setIsLaunching(true);
     setLaunchStatus('启动 Command Prompt 中...');
 
@@ -81,7 +111,10 @@ export function WindowsTerminal({ onClose }: WindowsTerminalProps) {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
-        }
+        },
+        body: JSON.stringify({
+          startingPath: getStartingPath()
+        })
       });
 
       if (response.ok) {
@@ -102,23 +135,6 @@ export function WindowsTerminal({ onClose }: WindowsTerminalProps) {
 
   return (
     <div className="windows-terminal-container">
-      {/* Header */}
-      <div className="terminal-header-windows">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <i className="fas fa-terminal"></i>
-          <span>Windows 系统终端</span>
-        </div>
-        {onClose && (
-          <button
-            className="btn-close-terminal"
-            onClick={onClose}
-            title="关闭"
-          >
-            <i className="fas fa-times"></i>
-          </button>
-        )}
-      </div>
-
       {/* Content */}
       <div className="terminal-content-windows">
         <div className="terminal-info">

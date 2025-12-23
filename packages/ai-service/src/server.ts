@@ -73,49 +73,279 @@ app.post('/api/autocomplete', (req: Request, res: Response) => {
  */
 app.post('/api/generate', (req: Request, res: Response) => {
   try {
-    const { description, language = 'zh' } = req.body;
+    const { description, language = 'zh', codeType = 'zhcode', currentCode = '' } = req.body;
 
-    // Simulate AI-powered code generation with templates
-    const templates: Record<string, Record<string, string>> = {
-      '打印': 'function createPrintFunc() {\n  return `打印("Hello, World!")`;\n}',
-      '函数': 'function createFunction() {\n  return `函数 myFunc(param) {\\n  返回 param * 2\\n}`;\n}',
-      '循环': 'function createLoop() {\n  return `对于 (令 i = 0; i < 10; i = i + 1) {\\n  打印(i)\\n}`;\n}',
-      'if': 'function createIf() {\n  return `如果 (x > 5) {\\n  打印("大于5")\\n} 否则 {\\n  打印("小于或等于5")\\n}`;\n}'
-    };
-
-    // Simple keyword matching for code generation
     let generatedCode = '';
     const lowerDesc = description.toLowerCase();
 
-    if (lowerDesc.includes('打印') || lowerDesc.includes('print')) {
-      generatedCode = '打印("输入你的文本")';
-    } else if (lowerDesc.includes('函数') || lowerDesc.includes('function')) {
-      generatedCode = `函数 ${getIdentifierFromDescription(description)}(参数) {
-  返回 参数
-}`;
-    } else if (lowerDesc.includes('循环') || lowerDesc.includes('loop')) {
-      generatedCode = `对于 (令 i = 0; i < 10; i = i + 1) {
-  打印(i)
-}`;
-    } else if (lowerDesc.includes('如果') || lowerDesc.includes('if')) {
-      generatedCode = `如果 (条件) {
-  打印("条件为真")
-} 否则 {
-  打印("条件为假")
-}`;
+    // Generate code based on detected code type
+    if (codeType === 'react' || codeType === 'typescript' || codeType === 'javascript') {
+      // Generate React/JS/TS code
+      generatedCode = generateReactCode(description, codeType, currentCode);
     } else {
-      generatedCode = '# 请提供更具体的描述\n# 例如: "创建一个打印函数"';
+      // Generate ZhCode
+      generatedCode = generateZhCode(description, currentCode);
     }
 
     res.json({
       code: generatedCode,
-      explanation: `Generated ZhCode from description: "${description}"`,
+      explanation: generatedCode,
+      codeType,
       confidence: 0.8
     });
   } catch (error) {
     res.status(400).json({ error: String(error) });
   }
 });
+
+// Generate React/JS/TS code
+function generateReactCode(description: string, codeType: string, currentCode: string): string {
+  const lowerDesc = description.toLowerCase();
+  const isTS = codeType === 'typescript' || codeType === 'react';
+  
+  // Detect if it's a component-related request
+  if (lowerDesc.includes('component') || lowerDesc.includes('组件')) {
+    const componentName = extractName(description) || 'MyComponent';
+    if (isTS) {
+      return `interface ${componentName}Props {
+  // Add your props here
+}
+
+export function ${componentName}({ }: ${componentName}Props) {
+  return (
+    <div className="${componentName.toLowerCase()}">
+      <h1>${componentName}</h1>
+    </div>
+  );
+}`;
+    } else {
+      return `export function ${componentName}(props) {
+  return (
+    <div className="${componentName.toLowerCase()}">
+      <h1>${componentName}</h1>
+    </div>
+  );
+}`;
+    }
+  }
+  
+  // useState hook
+  if (lowerDesc.includes('state') || lowerDesc.includes('usestate') || lowerDesc.includes('状态')) {
+    const stateName = extractName(description) || 'value';
+    const capitalizedName = stateName.charAt(0).toUpperCase() + stateName.slice(1);
+    return `const [${stateName}, set${capitalizedName}] = useState${isTS ? '<string>' : ''}('');`;
+  }
+  
+  // useEffect hook  
+  if (lowerDesc.includes('effect') || lowerDesc.includes('useeffect') || lowerDesc.includes('副作用')) {
+    return `useEffect(() => {
+  // Your effect logic here
+  console.log('Effect triggered');
+  
+  return () => {
+    // Cleanup function
+  };
+}, []); // Dependencies array`;
+  }
+  
+  // Function/Handler
+  if (lowerDesc.includes('function') || lowerDesc.includes('handler') || lowerDesc.includes('函数') || lowerDesc.includes('处理')) {
+    const funcName = extractName(description) || 'handleAction';
+    if (isTS) {
+      return `const ${funcName} = useCallback((event: React.MouseEvent) => {
+  // Your logic here
+  console.log('${funcName} called');
+}, []);`;
+    } else {
+      return `const ${funcName} = useCallback((event) => {
+  // Your logic here
+  console.log('${funcName} called');
+}, []);`;
+    }
+  }
+  
+  // Button
+  if (lowerDesc.includes('button') || lowerDesc.includes('按钮')) {
+    return `<button 
+  className="btn"
+  onClick={() => console.log('Button clicked')}
+>
+  Click Me
+</button>`;
+  }
+  
+  // Input
+  if (lowerDesc.includes('input') || lowerDesc.includes('输入')) {
+    return `<input
+  type="text"
+  value={value}
+  onChange={(e) => setValue(e.target.value)}
+  placeholder="Enter text..."
+  className="input"
+/>`;
+  }
+  
+  // Form
+  if (lowerDesc.includes('form') || lowerDesc.includes('表单')) {
+    return `<form onSubmit={(e) => {
+  e.preventDefault();
+  // Handle form submission
+}}>
+  <input type="text" name="field" />
+  <button type="submit">Submit</button>
+</form>`;
+  }
+  
+  // List/Map
+  if (lowerDesc.includes('list') || lowerDesc.includes('map') || lowerDesc.includes('列表')) {
+    return `{items.map((item, index) => (
+  <div key={item.id || index} className="item">
+    {item.name}
+  </div>
+))}`;
+  }
+  
+  // Fetch/API call
+  if (lowerDesc.includes('fetch') || lowerDesc.includes('api') || lowerDesc.includes('请求')) {
+    return `const fetchData = async () => {
+  try {
+    const response = await fetch('/api/endpoint');
+    if (!response.ok) throw new Error('Request failed');
+    const data = await response.json();
+    setData(data);
+  } catch (error) {
+    console.error('Error:', error);
+  }
+};`;
+  }
+  
+  // Default: generic function
+  return `// ${description}
+const myFunction = () => {
+  // Implement your logic here
+  console.log('Function executed');
+};`;
+}
+
+// Generate ZhCode
+function generateZhCode(description: string, currentCode: string): string {
+  const lowerDesc = description.toLowerCase();
+  
+  if (lowerDesc.includes('打印') || lowerDesc.includes('print') || lowerDesc.includes('输出')) {
+    return '打印("你好，世界！")';
+  }
+  
+  if (lowerDesc.includes('函数') || lowerDesc.includes('function')) {
+    const funcName = extractChineseName(description) || '我的函数';
+    return `函数 ${funcName}(参数) {
+  // 在这里写你的代码
+  返回 参数
+}`;
+  }
+  
+  if (lowerDesc.includes('循环') || lowerDesc.includes('loop') || lowerDesc.includes('遍历')) {
+    return `对于 (令 i = 0; i < 10; i = i + 1) {
+  打印(i)
+}`;
+  }
+  
+  if (lowerDesc.includes('如果') || lowerDesc.includes('if') || lowerDesc.includes('条件')) {
+    return `如果 (条件) {
+  打印("条件为真")
+} 否则 {
+  打印("条件为假")
+}`;
+  }
+  
+  if (lowerDesc.includes('变量') || lowerDesc.includes('variable')) {
+    const varName = extractChineseName(description) || '变量名';
+    return `令 ${varName} = "初始值"`;
+  }
+  
+  if (lowerDesc.includes('数组') || lowerDesc.includes('array') || lowerDesc.includes('列表')) {
+    return `令 列表 = [1, 2, 3, 4, 5]
+对于 (令 i = 0; i < 5; i = i + 1) {
+  打印(列表[i])
+}`;
+  }
+  
+  if (lowerDesc.includes('类') || lowerDesc.includes('class') || lowerDesc.includes('对象')) {
+    const className = extractChineseName(description) || '我的类';
+    return `类 ${className} {
+  属性 名称
+  属性 值
+  
+  方法 初始化(名称, 值) {
+    自身.名称 = 名称
+    自身.值 = 值
+  }
+  
+  方法 显示() {
+    打印(自身.名称 + ": " + 自身.值)
+  }
+}`;
+  }
+  
+  if (lowerDesc.includes('计算') || lowerDesc.includes('calc') || lowerDesc.includes('加') || lowerDesc.includes('减')) {
+    return `函数 计算(a, b) {
+  令 和 = a + b
+  令 差 = a - b
+  令 积 = a * b
+  令 商 = a / b
+  
+  打印("和: " + 和)
+  打印("差: " + 差)
+  打印("积: " + 积)
+  打印("商: " + 商)
+  
+  返回 和
+}`;
+  }
+  
+  // Default
+  return `// ${description}
+函数 新函数() {
+  // 在这里实现你的代码
+  打印("函数执行完毕")
+}`;
+}
+
+// Helper: extract name from description
+function extractName(description: string): string {
+  // Try to find a name pattern like "called X" or "named X"
+  const patterns = [
+    /called\s+(\w+)/i,
+    /named\s+(\w+)/i,
+    /名为\s*(\w+)/,
+    /叫\s*(\w+)/,
+    /(\w+)\s*component/i,
+    /(\w+)\s*组件/,
+  ];
+  
+  for (const pattern of patterns) {
+    const match = description.match(pattern);
+    if (match) return match[1];
+  }
+  
+  return '';
+}
+
+// Helper: extract Chinese name from description
+function extractChineseName(description: string): string {
+  const patterns = [
+    /名为\s*([\u4e00-\u9fa5\w]+)/,
+    /叫\s*([\u4e00-\u9fa5\w]+)/,
+    /创建\s*([\u4e00-\u9fa5\w]+)/,
+    /生成\s*([\u4e00-\u9fa5\w]+)/,
+  ];
+  
+  for (const pattern of patterns) {
+    const match = description.match(pattern);
+    if (match) return match[1];
+  }
+  
+  return '';
+}
 
 /**
  * Endpoint: POST /api/explain-error
@@ -635,12 +865,12 @@ app.post('/api/launch-terminal', (req: Request, res: Response) => {
     
     // Launch Windows Terminal
     // Using 'wt.exe' which is available on Windows 10/11
-    const command = startingPath ? `wt.exe -d "${startingPath}"` : 'wt.exe';
+    const args = startingPath ? ['-d', startingPath] : [];
     
-    spawn(command, {
+    spawn('wt.exe', args, {
       detached: true,
       stdio: 'ignore',
-      shell: true
+      shell: false
     });
 
     res.json({ 
@@ -658,6 +888,168 @@ app.post('/api/launch-terminal', (req: Request, res: Response) => {
 });
 
 /**
+ * Endpoint: GET /api/current-directory
+ * Purpose: Get the current working directory of the backend service
+ */
+app.get('/api/current-directory', (req: Request, res: Response) => {
+  try {
+    const cwd = process.cwd();
+    res.json({ 
+      success: true, 
+      path: cwd,
+      separator: path.sep
+    });
+  } catch (error) {
+    res.status(500).json({ 
+      success: false, 
+      message: 'Failed to get current directory',
+      error: (error as Error).message 
+    });
+  }
+});
+
+/**
+ * Endpoint: POST /api/browse-directory
+ * Purpose: Open a folder browser dialog and return the selected path
+ * Note: This uses PowerShell to show a folder picker dialog
+ */
+app.post('/api/browse-directory', async (req: Request, res: Response) => {
+  try {
+    const { initialPath } = req.body;
+    const startPath = initialPath || process.cwd();
+    
+    // Use PowerShell to open a folder browser dialog
+    const psScript = `
+      Add-Type -AssemblyName System.Windows.Forms
+      $browser = New-Object System.Windows.Forms.FolderBrowserDialog
+      $browser.Description = "Select a folder"
+      $browser.SelectedPath = "${startPath.replace(/\\/g, '\\\\')}"
+      $browser.ShowNewFolderButton = $true
+      $result = $browser.ShowDialog()
+      if ($result -eq [System.Windows.Forms.DialogResult]::OK) {
+        Write-Output $browser.SelectedPath
+      }
+    `;
+    
+    const ps = spawn('powershell.exe', ['-NoProfile', '-Command', psScript], {
+      stdio: ['pipe', 'pipe', 'pipe']
+    });
+    
+    let selectedPath = '';
+    let errorOutput = '';
+    
+    ps.stdout.on('data', (data: Buffer) => {
+      selectedPath += data.toString().trim();
+    });
+    
+    ps.stderr.on('data', (data: Buffer) => {
+      errorOutput += data.toString();
+    });
+    
+    ps.on('close', (code: number) => {
+      if (selectedPath) {
+        res.json({ 
+          success: true, 
+          path: selectedPath 
+        });
+      } else {
+        res.json({ 
+          success: false, 
+          message: 'No folder selected or dialog cancelled'
+        });
+      }
+    });
+    
+    ps.on('error', (error: Error) => {
+      res.status(500).json({ 
+        success: false, 
+        message: 'Failed to open folder browser',
+        error: error.message 
+      });
+    });
+  } catch (error) {
+    res.status(500).json({ 
+      success: false, 
+      message: 'Failed to browse directory',
+      error: (error as Error).message 
+    });
+  }
+});
+
+/**
+ * Endpoint: POST /api/resolve-folder-path
+ * Purpose: Try to resolve a folder name to its full path by searching common locations
+ * Body: { folderName: string }
+ */
+app.post('/api/resolve-folder-path', async (req: Request, res: Response) => {
+  try {
+    const { folderName } = req.body;
+    
+    if (!folderName) {
+      res.json({ success: false, message: 'No folder name provided' });
+      return;
+    }
+    
+    // Common locations to search for the folder
+    const homeDir = process.env.USERPROFILE || process.env.HOME || 'C:\\Users';
+    const searchLocations = [
+      path.join(homeDir, 'Desktop', folderName),
+      path.join(homeDir, 'Documents', folderName),
+      path.join(homeDir, 'Projects', folderName),
+      path.join(homeDir, folderName),
+      path.join('C:\\Projects', folderName),
+      path.join('D:\\Projects', folderName),
+    ];
+    
+    // Use PowerShell to check which path exists
+    const psScript = `
+      $paths = @(${searchLocations.map(p => `"${p.replace(/\\/g, '\\\\')}"`).join(', ')})
+      foreach ($p in $paths) {
+        if (Test-Path $p -PathType Container) {
+          Write-Output $p
+          exit
+        }
+      }
+    `;
+    
+    const ps = spawn('powershell.exe', ['-NoProfile', '-Command', psScript], {
+      stdio: ['pipe', 'pipe', 'pipe']
+    });
+    
+    let foundPath = '';
+    
+    ps.stdout.on('data', (data: Buffer) => {
+      foundPath += data.toString().trim();
+    });
+    
+    ps.on('close', () => {
+      if (foundPath) {
+        res.json({ success: true, path: foundPath });
+      } else {
+        res.json({ 
+          success: false, 
+          message: `Could not find folder "${folderName}" in common locations` 
+        });
+      }
+    });
+    
+    ps.on('error', (error: Error) => {
+      res.status(500).json({ 
+        success: false, 
+        message: 'Failed to search for folder',
+        error: error.message 
+      });
+    });
+  } catch (error) {
+    res.status(500).json({ 
+      success: false, 
+      message: 'Failed to resolve folder path',
+      error: (error as Error).message 
+    });
+  }
+});
+
+/**
  * Endpoint: POST /api/launch-powershell
  * Purpose: Launch Windows PowerShell
  * Body: { startingPath?: string }
@@ -667,14 +1059,14 @@ app.post('/api/launch-powershell', (req: Request, res: Response) => {
     const { startingPath } = req.body;
     
     // Launch PowerShell
-    const command = startingPath 
-      ? `powershell.exe -NoExit -Command "Set-Location \\"${startingPath}\\""` 
-      : 'powershell.exe -NoExit';
+    const args = startingPath 
+      ? ['-NoExit', '-Command', `Set-Location '${startingPath}'`]
+      : ['-NoExit'];
     
-    spawn(command, {
+    spawn('powershell.exe', args, {
       detached: true,
       stdio: 'ignore',
-      shell: true
+      shell: false
     });
 
     res.json({ 
@@ -701,14 +1093,14 @@ app.post('/api/launch-cmd', (req: Request, res: Response) => {
     const { startingPath } = req.body;
     
     // Launch CMD (Command Prompt)
-    const command = startingPath 
-      ? `cmd.exe /K "cd /d \\"${startingPath}\\""` 
-      : 'cmd.exe';
+    const args = startingPath 
+      ? ['/K', `cd /d ${startingPath}`]
+      : [];
     
-    spawn(command, {
+    spawn('cmd.exe', args, {
       detached: true,
       stdio: 'ignore',
-      shell: true
+      shell: false
     });
 
     res.json({ 
@@ -742,8 +1134,11 @@ app.listen(PORT, () => {
   console.log('  POST /api/suggest-refactor   - 重构建议');
   console.log('  POST /api/generate-unittest  - 单元测试生成');
   console.log('  POST /api/detect-bugs        - Bug 检测');
-  console.log('  POST /api/launch-terminal');
-  console.log('  POST /api/launch-powershell');
-  console.log('  POST /api/launch-cmd');
+  console.log('  POST /api/launch-terminal    - 启动终端');
+  console.log('  POST /api/launch-powershell  - 启动 PowerShell');
+  console.log('  POST /api/launch-cmd         - 启动 CMD');
+  console.log('  GET  /api/current-directory  - 获取当前目录');
+  console.log('  POST /api/browse-directory   - 浏览选择文件夹');
+  console.log('  POST /api/resolve-folder-path - 解析文件夹路径');
   console.log('');
 });

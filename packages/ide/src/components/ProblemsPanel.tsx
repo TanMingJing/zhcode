@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import './ProblemsPanel.css';
 
 export interface Problem {
@@ -17,7 +17,7 @@ interface ProblemsPanelProps {
   onClose?: () => void;
 }
 
-export function ProblemsPanel({ problems, onProblemClick, onClose }: ProblemsPanelProps) {
+export function ProblemsPanel({ problems, onProblemClick, onClose: _onClose }: ProblemsPanelProps) {
   const [filter, setFilter] = useState<'all' | 'error' | 'warning' | 'info'>('all');
 
   const filteredProblems = problems.filter(p => 
@@ -41,24 +41,6 @@ export function ProblemsPanel({ problems, onProblemClick, onClose }: ProblemsPan
 
   return (
     <div className="problems-panel">
-      {/* Header */}
-      <div className="problems-header">
-        <div className="problems-title">
-          <i className="fas fa-circle-xmark"></i>
-          <span>问题</span>
-          <span className="problem-count">
-            {errorCount > 0 && <span className="count-badge error">{errorCount}</span>}
-            {warningCount > 0 && <span className="count-badge warning">{warningCount}</span>}
-            {infoCount > 0 && <span className="count-badge info">{infoCount}</span>}
-          </span>
-        </div>
-        {onClose && (
-          <button className="panel-close-btn" onClick={onClose}>
-            <i className="fas fa-times"></i>
-          </button>
-        )}
-      </div>
-
       {/* Filter Tabs */}
       <div className="problems-filter">
         <button

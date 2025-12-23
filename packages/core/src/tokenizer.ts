@@ -54,8 +54,11 @@ export class Tokenizer {
         continue;
       }
 
-      // Strings
-      if (char === '"' || char === "'" || char === '`') {
+      // Strings (including Chinese quotes)
+      // Chinese quotes: \u201c = "  \u201d = "  \u2018 = '  \u2019 = '
+      if (char === '"' || char === "'" || char === '`' || 
+          char === '\u201c' || char === '\u201d' || 
+          char === '\u2018' || char === '\u2019') {
         this.tokens.push(this.readString());
         continue;
       }
@@ -199,20 +202,33 @@ export class Tokenizer {
   }
 
   /**
-   * Read a string literal
+   * Read a string literal (supports English and Chinese quotes)
    */
   private readString(): Token {
     const startLine = this.line;
     const startColumn = this.column;
     const startPos = this.position;
-    const quote = this.peek();
+    const openingQuote = this.peek();
 
+    // Map Chinese quotes to their closing counterparts
+    // \u201c = "  \u201d = "  \u2018 = '  \u2019 = '
+    const quoteMap: Record<string, string> = {
+      '"': '"', // English double quote
+      "'": "'", // English single quote
+      '`': '`', // Backtick
+      '\u201c': '\u201d', // Chinese left double quote → right double quote
+      '\u201d': '\u201d', // Chinese right double quote (in case input is already closing)
+      '\u2018': '\u2019', // Chinese left single quote → right single quote
+      '\u2019': '\u2019', // Chinese right single quote (in case input is already closing)
+    };
+
+    const closingQuote = quoteMap[openingQuote] || openingQuote;
     this.advance(); // Skip opening quote
 
     let value = '';
-    const isTemplate = quote === '`';
+    const isTemplate = openingQuote === '`';
 
-    while (this.position < this.source.length && this.peek() !== quote) {
+    while (this.position < this.source.length && this.peek() !== closingQuote) {
       if (this.peek() === '\\') {
         this.advance();
         const escaped = this.peek();
@@ -224,7 +240,7 @@ export class Tokenizer {
       }
     }
 
-    if (this.peek() === quote) {
+    if (this.peek() === closingQuote) {
       this.advance(); // Skip closing quote
     }
 

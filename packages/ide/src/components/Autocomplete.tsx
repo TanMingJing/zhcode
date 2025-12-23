@@ -139,34 +139,39 @@ export function generateSuggestions(
     variables?: string[];
     functions?: string[];
     types?: string[];
-  }
+  },
+  contextInfo?: { inString: boolean; stringChar: string }
 ): Suggestion[] {
   const suggestions: Suggestion[] = [];
   const filter = filterText.toLowerCase();
+  const isInString = contextInfo?.inString || false;
 
-  // ZhCode keywords
+  // ZhCode keywords (skip if in string)
   const defaultKeywords = [
     '函数', '变量', '如果', '循环', '返回', '中止', '继续',
     '真', '假', '无', '类', '导入', '导出', '接口', '扩展'
   ];
 
-  const keywords = context.keywords || defaultKeywords;
-  keywords
-    .filter(k => k.toLowerCase().startsWith(filter))
-    .forEach((keyword, i) => {
-      suggestions.push({
-        id: `kw-${i}`,
-        label: keyword,
-        kind: 'keyword',
-        detail: 'ZhCode 关键字',
-        sortText: `0-${keyword}`
+  // Only show keywords if not in a string
+  if (!isInString) {
+    const keywords = context.keywords || defaultKeywords;
+    keywords
+      .filter(k => k.toLowerCase().startsWith(filter) || k.includes(filter))
+      .forEach((keyword, i) => {
+        suggestions.push({
+          id: `kw-${i}`,
+          label: keyword,
+          kind: 'keyword',
+          detail: 'ZhCode 关键字',
+          sortText: `0-${keyword}`
+        });
       });
-    });
+  }
 
   // Variables
   const variables = context.variables || ['当前日期', '用户名', '项目名'];
   variables
-    .filter(v => v.toLowerCase().startsWith(filter))
+    .filter(v => !isInString && (v.toLowerCase().startsWith(filter) || v.includes(filter)))
     .forEach((variable, i) => {
       suggestions.push({
         id: `var-${i}`,
@@ -177,39 +182,71 @@ export function generateSuggestions(
       });
     });
 
-  // Functions
-  const functions = context.functions || [
-    { name: '打印', params: '(文本)' },
-    { name: '读入', params: '()' },
-    { name: '长度', params: '(数组)' },
-    { name: '追加', params: '(数组, 值)' },
-  ];
-  functions
-    .filter(f => f.name.toLowerCase().startsWith(filter))
-    .forEach((func, i) => {
-      suggestions.push({
-        id: `func-${i}`,
-        label: func.name,
-        kind: 'function',
-        detail: func.params,
-        documentation: `调用 ${func.name}${func.params} 函数`,
-        sortText: `2-${func.name}`
+  // Functions (only if not in string)
+  if (!isInString) {
+    const functions = context.functions || [
+      { name: '打印', params: '(文本)' },
+      { name: '读入', params: '()' },
+      { name: '长度', params: '(数组)' },
+      { name: '追加', params: '(数组, 值)' },
+    ];
+    functions
+      .filter(f => f.name.toLowerCase().startsWith(filter) || f.name.includes(filter))
+      .forEach((func, i) => {
+        suggestions.push({
+          id: `func-${i}`,
+          label: func.name,
+          kind: 'function',
+          detail: func.params,
+          documentation: `调用 ${func.name}${func.params} 函数`,
+          sortText: `2-${func.name}`
+        });
       });
-    });
+  }
 
-  // Types
-  const types = context.types || ['字符串', '数字', '布尔', '数组', '对象'];
-  types
-    .filter(t => t.toLowerCase().startsWith(filter))
-    .forEach((type, i) => {
-      suggestions.push({
-        id: `type-${i}`,
-        label: type,
-        kind: 'type',
-        detail: '类型',
-        sortText: `3-${type}`
+  // Types (only if not in string)
+  if (!isInString) {
+    const types = context.types || ['字符串', '数字', '布尔', '数组', '对象'];
+    types
+      .filter(t => t.toLowerCase().startsWith(filter) || t.includes(filter))
+      .forEach((type, i) => {
+        suggestions.push({
+          id: `type-${i}`,
+          label: type,
+          kind: 'type',
+          detail: '类型',
+          sortText: `3-${type}`
+        });
       });
-    });
+  }
+
+  // Common Chinese string suggestions when in string
+  if (isInString && filter) {
+    const commonStrings = [
+      { text: '你好', meaning: '问候' },
+      { text: '谢谢', meaning: '感谢' },
+      { text: '没关系', meaning: '回应' },
+      { text: '再见', meaning: '告别' },
+      { text: '是', meaning: '肯定' },
+      { text: '否', meaning: '否定' },
+      { text: '成功', meaning: '结果' },
+      { text: '失败', meaning: '结果' },
+      { text: '错误', meaning: '错误' },
+      { text: '警告', meaning: '警告' },
+    ];
+    
+    commonStrings
+      .filter(s => s.text.includes(filter) || s.meaning.includes(filter))
+      .forEach((str, i) => {
+        suggestions.push({
+          id: `str-${i}`,
+          label: str.text,
+          kind: 'snippet',
+          detail: `字符串 - ${str.meaning}`,
+          sortText: `4-${str.text}`
+        });
+      });
+  }
 
   // Sort by sortText
   suggestions.sort((a, b) => (a.sortText || '').localeCompare(b.sortText || ''));
